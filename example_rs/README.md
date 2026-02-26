@@ -30,3 +30,16 @@ cargo run
 export ZRTDB_STATIC_ROOT=/your/static/root
 cargo run
 ```
+
+
+## 自测（建议）
+
+```bash
+# 1) 先确保模型已生成 Rust 绑定
+zrtdb_model
+
+# 2) 构建并运行 Rust 示例
+cd example_rs
+cargo build
+cargo run
+```
