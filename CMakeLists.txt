@@ -34,6 +34,7 @@ install(DIRECTORY "${CMAKE_SOURCE_DIR}/DAT/"
 install(CODE "file(MAKE_DIRECTORY \"${ZRTDB_INSTALL_ROOT}/header\")")
 install(CODE "file(MAKE_DIRECTORY \"${ZRTDB_INSTALL_ROOT}/header/inc\")")
 install(CODE "file(MAKE_DIRECTORY \"${ZRTDB_INSTALL_ROOT}/header/.datdef\")")
+install(CODE "file(MAKE_DIRECTORY \"${ZRTDB_INSTALL_ROOT}/header/rust\")")
 
 add_subdirectory(zrtdb_lib)
 add_subdirectory(zrtdb_model)

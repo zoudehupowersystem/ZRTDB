@@ -13,6 +13,7 @@ ZRTDB（Zero-copy Real-Time Data Bus）是面向实时控制、SCADA、工业边
 1) 建模：用 `DAT/APPDAT.json`文件描述共享内存数据结构；由 `zrtdb_model` 编译并实例化运行期产物  
 2) 运维：用 `zrtdb_tool` 对运行期数据进行查询/修改/翻页查看，并理解其视图与键盘交互逻辑  
 3) 业务集成：应用程序链接 `libzrtdb.a`，引入 `zrtdb_model` 生成的头文件（每个 APP 一个 `header/inc/<APP>.h`），按生成的 context/helper 或裸指针/结构体访问数据
+   Rust 应用可直接使用 `zrtdb_model` 生成的 `header/rust/<APP>.rs` 访问同一套共享内存布局。
 
 本项目当前版本的软硬件环境默认 **Linux x86-64 + gcc/clang（C++20）**，当前版本暂时不考虑跨平台。未来可考虑移植到Windows平台、增加Rust语言的接口等。
 
