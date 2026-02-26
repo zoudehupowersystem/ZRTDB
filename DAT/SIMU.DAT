@@ -1,0 +1,14 @@
+/*
+ * ZRTDB DAT definition.
+ * Parser ignores C/C++ style comments (// and /* */).
+ * Use COMMENT:<text> to attach machine-readable description for tools.
+ */
+/DBNAME:SIMU
+/RECORD:CURVEDATA DIM:1000  COMMENT:实时曲线记录
+/PARTITION:SIMUPTR
+/FIELD:REALNUM  TYPE:long  COMMENT:仿真计数
+/FIELD:STEPDT  TYPE:double  COMMENT:仿真步长
+/FIELD:SIMUTIME  TYPE:double  COMMENT:当前仿真时间
+/FIELD:INFO_CURVEDATA TYPE:string  COMMENT:实时曲线名称
+/FIELD:VAL_CURVEDATA TYPE:double  COMMENT:实时曲线数值
+

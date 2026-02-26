@@ -1,0 +1,39 @@
+/*
+ * ZRTDB DAT definition.
+ * Parser ignores C/C++ style comments (// and /* */).
+ * Use COMMENT:<text> to attach machine-readable description for tools.
+ */
+/DBNAME:MODEL
+/RECORD:GENERATOR DIM:10000  COMMENT:发电机
+/RECORD:LOAD DIM:10000  COMMENT:负荷
+/RECORD:LINE DIM:10000  COMMENT:支路
+/PARTITION:MODELPTR
+/FIELD:STATUS   TYPE:int  COMMENT:模型状态
+/FIELD:NAME_GENERATOR  TYPE:string  COMMENT:发电机名称
+/FIELD:P_GENERATOR  TYPE:double  COMMENT:发电机有功出力
+/FIELD:Q_GENERATOR  TYPE:double  COMMENT:发电机无功出力
+/FIELD:I_GENERATOR  TYPE:double  COMMENT:发电机电流
+/FIELD:VT_GENERATOR  TYPE:double  COMMENT:发电机端口电压
+/FIELD:S_GENERATOR  TYPE:double  COMMENT:发电机容量
+/FIELD:V_GENERATOR  TYPE:double  COMMENT:发电机额定电压
+/FIELD:TJ_GENERATOR  TYPE:double  COMMENT:发电机转动惯量
+/FIELD:RA_GENERATOR  TYPE:double  COMMENT:发电机定子电阻
+/FIELD:XD_GENERATOR  TYPE:double  COMMENT:发电机d轴同步电抗
+/FIELD:XDP_GENERATOR  TYPE:double  COMMENT:发电机d轴暂态电抗
+/FIELD:XDPP_GENERATOR  TYPE:double  COMMENT:发电机d轴次暂态电抗
+/FIELD:XQ_GENERATOR  TYPE:double  COMMENT:发电机q轴同步电抗
+/FIELD:XQP_GENERATOR  TYPE:double  COMMENT:发电机q轴暂态电抗
+/FIELD:XQPP_GENERATOR  TYPE:double  COMMENT:发电机q轴次暂态电抗
+/FIELD:TDP_GENERATOR  TYPE:double  COMMENT:发电机d轴励磁绕组定子开路时间常数
+/FIELD:TDPP_GENERATOR  TYPE:double  COMMENT:发电机d轴阻尼D绕组定子开路时间常数
+/FIELD:TQP_GENERATOR  TYPE:double  COMMENT:发电机q轴阻尼g绕组定子开路时间常数
+/FIELD:TQPP_GENERATOR  TYPE:double  COMMENT:发电机q轴阻尼Q绕组定子开路时间常数
+/FIELD:D_GENERATOR  TYPE:double  COMMENT:发电机阻尼系数
+/FIELD:S_LOAD  TYPE:double  COMMENT:负荷容量
+/FIELD:NAME_LOAD  TYPE:string  COMMENT:负荷名称
+/FIELD:V_LOAD  TYPE:double  COMMENT:负荷额定电压
+/FIELD:TYPE_LINE  TYPE:int  COMMENT:支路类型
+/FIELD:NAME_LINE  TYPE:string  COMMENT:支路名称
+/FIELD:R_LINE  TYPE:double  COMMENT:支路电阻
+/FIELD:X_LINE  TYPE:double  COMMENT:支路电抗
+/FIELD:B_LINE  TYPE:double  COMMENT:支路变比或对地电纳

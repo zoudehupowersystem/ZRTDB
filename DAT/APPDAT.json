@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "apps": [
+    {
+      "app": "CONTROLER",
+      "dbs": ["MODEL", "CONTROL"]
+    },
+    {
+      "app": "SIMULATION",
+      "dbs": ["MODEL", "SIMU"]
+    }
+  ]
+}

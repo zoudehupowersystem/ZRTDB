@@ -1,0 +1,20 @@
+/*
+ * ZRTDB DAT definition.
+ * Parser ignores C/C++ style comments (// and /* */).
+ * Use COMMENT:<text> to attach machine-readable description for tools.
+ */
+/DBNAME:CONTROL 
+/RECORD:INPUT DIM:10000  COMMENT:输入信号
+/RECORD:COMMANDS DIM:1000  COMMENT:控制指令
+/PARTITION:CONTROLPTR
+/FIELD:SELFMAC  TYPE:string  COMMENT:控制对象MAC地址
+/FIELD:SELFIP  TYPE:string  COMMENT:控制对象IP地址
+/FIELD:INFO_COMMANDS TYPE:string  COMMENT:控制指令描述
+/FIELD:ID_COMMANDS TYPE:int  COMMENT:控制指令点号
+/FIELD:VAL_COMMANDS TYPE:float  COMMENT:控制输出浮点
+/FIELD:SIG_COMMANDS TYPE:int  COMMENT:控制输出信号
+/FIELD:STATUS_COMMANDS TYPE:int  COMMENT:控制指令状态(0-发出;1-预置;2-已执行)
+/FIELD:ID_INPUT TYPE:int  COMMENT:输入点号
+/FIELD:VAL_INPUT TYPE:float  COMMENT:输入测量
+/FIELD:SIG_INPUT TYPE:int  COMMENT:输入信号
+/FIELD:STATUS_INPUT TYPE:int  COMMENT:输入状态(0-接收;1-已处理)
