@@ -591,7 +591,62 @@ int zrtdb_app_<app>_init(zrtdb_app_<app>_ctx_t* ctx);
 
 ---
 
-## 10. 快照（Snapshot）补充说明
+
+## 10. Rust 接口（DAT 驱动自动生成）
+
+### 10.1 设计目标
+
+Rust 接口的目标不是“手写一套并行模型”，而是**复用现有 DAT 编译产物**，确保 Rust/C/C++ 对同一 `.sec` 布局有一致解释。
+
+具体原则：
+
+1) 以 `zrtdb_model` 为唯一模型编译器：DAT 改动后重新运行 `zrtdb_model`，同时生成 C 头与 Rust 绑定。  
+2) Rust 绑定仅承载 ABI/布局，不引入额外运行期协议。  
+3) Rust 与 C/C++ 通过同一 `RegisterApp_` / `MapMemory_` 访问同一共享内存文件。
+
+### 10.2 生成位置与触发时机
+
+- 生成目录：`/usr/local/ZRTDB/header/rust/`（可由静态根目录配置影响）。
+- 生成文件：每个 APP 一个 `header/rust/<APP>.rs`。
+- 触发时机：执行 `zrtdb_model` 编译 APP 配置（`APPDAT.json` 或 legacy `.APPDAT`）时自动生成。
+
+### 10.3 生成内容说明
+
+每个 `header/rust/<APP>.rs` 主要包含：
+
+- `unsafe extern "C"` 声明：`RegisterApp_`、`MapMemory_`；
+- APP/分区/容量常量（与 DAT 编译结果一致）；
+- `#[repr(C, packed)]` 的分区结构体定义（字段顺序与字节布局匹配 C 侧）；
+- `zrtdb_app_<app>_ctx_t` 上下文结构体（分区指针集合）；
+- `zrtdb_app_<app>_init(...)`：对 `RegisterApp_ + MapMemory_` 的 Rust 侧便捷封装。
+
+> 注意：`packed` 结构上的字段访问在 Rust 中可能触发未对齐访问风险。建议在业务层使用 `ptr::read_unaligned` / 拷贝到对齐本地变量后再计算，避免直接借用未对齐字段引用。
+
+### 10.4 推荐工作流（Rust）
+
+```bash
+# 1) 更新 DAT 后，重新生成模型与 Rust 绑定
+zrtdb_model
+
+# 2) 进入 Rust 示例工程（或你的业务工程）
+cd example_rs
+
+# 3) 编译并运行
+cargo build
+cargo run
+```
+
+`example_rs/build.rs` 会在编译时从 `${ZRTDB_STATIC_ROOT:-/usr/local/ZRTDB}/header/rust/<APP>.rs` 拷贝生成绑定文件到 `OUT_DIR`，并链接 `libzrtdb.a`。
+
+### 10.5 与 C/C++ 的协同边界
+
+- **模型源头统一**：DAT / APPDAT 是唯一契约源，不建议手改生成的 `.rs/.h` 文件。  
+- **版本切换规则一致**：DAT 变更后应整体重启相关映射进程，防止旧进程按旧布局解释新 `.sec`。  
+- **运维工具通用**：Rust 进程写入的数据可直接被 `zrtdb_tool`、快照与 watchdog 观察和审计。
+
+---
+
+## 11. 快照（Snapshot）补充说明
 
 快照目录位于该 APP 根目录下，并包含：
 
@@ -608,7 +663,7 @@ int zrtdb_app_<app>_init(zrtdb_app_<app>_ctx_t* ctx);
 
 ---
 
-## 11. 常见问题与排障
+## 12. 常见问题与排障
 
 1) `Meta file not found for APP=...`  
 说明该 APP 尚未被实例化。检查：是否运行过 `zrtdb_model`，以及 `${MMDB_RUNTIME_ROOT}/<APP>/meta/apps/` 是否存在 `<APP>.sec` 与 `<APP>_NEW.sec`。
@@ -621,7 +676,7 @@ int zrtdb_app_<app>_init(zrtdb_app_<app>_ctx_t* ctx);
 
 ---
 
-## 12. 选型建议
+## 13. 选型建议
 
 如果客户要跨网络、要QoS、要发现与互操作：DDS/zenoh/eCAL属于更合适的“体系型”选择，但请接受复杂度与学习成本。
 
