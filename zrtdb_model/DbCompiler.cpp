@@ -1312,6 +1312,11 @@ void DbCompiler::generateAppRust(const std::string& appUpper, const app_strc_dat
     os << "unsafe extern \"C\" {\n";
     os << "    pub fn RegisterApp_(app_name: *const c_char) -> c_int;\n";
     os << "    pub fn MapMemory_(part_nm: *const c_char, part_addr: *mut *mut c_char) -> c_int;\n";
+    os << "    pub fn free_MapMemory_() -> c_int;\n";
+    os << "    pub fn SnapshotReadLock_() -> c_int;\n";
+    os << "    pub fn SnapshotReadUnlock_() -> c_int;\n";
+    os << "    pub fn SaveSnapshot_(out_path: *mut c_char, out_len: c_int) -> c_int;\n";
+    os << "    pub fn LoadSnapshot_(snapshot_name_or_path: *const c_char) -> c_int;\n";
     os << "}\n\n";
 
     os << "pub const ZRTDB_APP_NAME_" << appUpperSan << ": &[u8] = b\"" << appUpper << "\\0\";\n";

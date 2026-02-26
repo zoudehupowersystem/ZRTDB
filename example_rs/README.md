@@ -1,45 +1,66 @@
 # example_rs
 
-Rust 示例：访问与 C/C++ 示例同一套 ZRTDB 共享内存数据结构。
+Rust examples that access the same ZRTDB shared-memory layout as the C/C++ demos.
 
-## 前置步骤
+## Prerequisites
 
-1. 先编译安装并执行 `zrtdb_model`，使其根据 `DAT/` 生成 Rust 接口文件：
+1. Build/install ZRTDB and run `zrtdb_model` first so DAT-based Rust bindings are generated:
 
 ```bash
 zrtdb_model
-# 会生成 /usr/local/ZRTDB/header/rust/<APP>.rs
+# Generates /usr/local/ZRTDB/header/rust/<APP>.rs
 ```
 
-2. 默认示例使用 `CONTROLER` APP，可通过环境变量切换：
+2. Default APP is `CONTROLER` (matches the C++ example). You can switch APP with:
 
 ```bash
 export ZRTDB_APP=SIMULATION
 ```
 
-## 运行
+## Binaries
+
+This crate now provides **at least two Rust processes** that mirror `example/policy_gen_cpp.cpp` and `example/policy_exec_cpp.cpp`:
+
+- `policy_gen_rs`: producer/publisher process writing COMMANDS rows and publishing LV
+- `policy_exec_rs`: consumer/executor process watching LV, reading latest row, and marking status done
+
+There is also a tiny `zrtdb_example_rs` binary (`src/main.rs`) for basic mapping smoke checks.
+
+## Build
 
 ```bash
 cd example_rs
-cargo run
+cargo build
 ```
 
-如需自定义静态根目录（默认 `/usr/local/ZRTDB`）：
+## Run two Rust processes (recommended)
+
+Terminal 1:
+
+```bash
+cd example_rs
+ZRTDB_DEMO_LOOPS=8 cargo run --bin policy_gen_rs
+```
+
+Terminal 2:
+
+```bash
+cd example_rs
+ZRTDB_DEMO_LOOPS=16 cargo run --bin policy_exec_rs
+```
+
+You should see `publish: ...` logs in generator and `consume: ...` logs in executor.
+
+## Optional smoke run
+
+```bash
+cd example_rs
+cargo run --bin zrtdb_example_rs
+```
+
+## Optional static root override
 
 ```bash
 export ZRTDB_STATIC_ROOT=/your/static/root
-cargo run
-```
-
-
-## 自测（建议）
-
-```bash
-# 1) 先确保模型已生成 Rust 绑定
-zrtdb_model
-
-# 2) 构建并运行 Rust 示例
-cd example_rs
 cargo build
-cargo run
 ```
