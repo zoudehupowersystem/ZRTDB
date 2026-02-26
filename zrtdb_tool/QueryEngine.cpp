@@ -680,7 +680,12 @@ private:
         if (cur_.kind == TokKind::NUMBER) {
             double x = 0.0;
             try {
-                x = std::stod(cur_.text);
+                size_t idx = 0;
+                x = std::stod(cur_.text, &idx);
+                if (idx != cur_.text.size()) {
+                    err_ = "Bad number: '" + cur_.text + "'";
+                    return nullptr;
+                }
             } catch (...) {
                 err_ = "Bad number: '" + cur_.text + "'";
                 return nullptr;
