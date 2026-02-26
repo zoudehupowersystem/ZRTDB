@@ -1,59 +1,138 @@
 # ZRTDB (Zero-copy Real-Time Data Bus)
 
-ZRTDB is a model-first shared-memory data plane for real-time control, SCADA, and industrial edge workloads.
-Its core idea is to move structural complexity into the modeling/build phase, so runtime access becomes fixed-offset read/write with predictable latency.
+ZRTDB (Zero-copy Real-Time Data Bus) is a model-first real-time data plane designed for control systems, SCADA, and industrial edge workloads. The key engineering tradeoff is:
 
-ZRTDB is **not** a replacement for network databases or general-purpose message middleware.
-It is a practical infrastructure layer for **same-host, deterministic, inspectable** real-time data sharing.
+> move structural complexity into the modeling/instantiation phase, so runtime access becomes fixed-offset direct memory read/write.
 
-## 1. Core Features
+This gives predictable latency and high operational transparency. ZRTDB is not intended to replace Redis/SQLite or network middleware; it is a same-host deterministic shared-memory foundation.
 
-- **Zero-copy data path**: multiple processes map the same `.sec` partition files.
-- **Deterministic layout**: schema is frozen by DAT/APPDAT compilation.
-- **Operational tooling**: built-in `zrtdb_tool` for inspection, query, editing, paging, and snapshots.
-- **Safety guardrails**: `zrtdb_watchdog` auditing and overflow fuse behavior.
+Main characteristics:
 
-## 2. Repository Layout
+- **Zero-copy**: multiple processes map the same `.sec` partition files.
+- **Strong determinism**: data layout is frozen during modeling; runtime path is effectively `base + offset`.
+- **Operational tooling**: `zrtdb_tool` supports runtime inspection, query, write, paging view, and snapshots.
 
-- `zrtdb_lib/`: runtime library and shared capabilities
-- `include/`: public C API headers (notably `zrtdb.h`)
+Typical roles in a project:
+
+1. **Modeling**: describe schema in `DAT/` + `APPDAT.json`, compile with `zrtdb_model`.
+2. **Operations**: inspect/modify runtime data via `zrtdb_tool`.
+3. **Business integration**: C/C++/Rust applications map and access partitions using generated headers/bindings.
+
+---
+
+## 1. Directory Model and Artifacts: Static vs Runtime
+
+### 1.1 Source repository directories
+
+- `zrtdb_lib/`: runtime library (meta loading, mmap management, snapshots, shared helpers)
+- `include/`: public headers (`zrtdb.h` is the C ABI entry)
 - `zrtdb_model/`: model compiler + runtime instantiator
-- `zrtdb_tool/`: operations/inspection CLI
-- `zrtdb_watchdog/`: watchdog/audit service
-- `DAT/`: sample DAT and APPDAT definitions
+- `zrtdb_tool/`: operations and inspection CLI
+- `zrtdb_watchdog/`: watchdog/audit daemon
+- `DAT/`: example DAT and APPDAT definitions
 - `example/`: C/C++ examples
 - `example_rs/`: Rust example
 
-## 3. Static vs Runtime Roots
+### 1.2 Two roots
 
-ZRTDB uses two roots:
+A) **Static root** (default `/usr/local/ZRTDB`)  
+Contains `libzrtdb.a`, public headers, DAT examples, and generated model outputs (headers/defs/Rust bindings).
 
-1. **Static root** (default: `/usr/local/ZRTDB`)
-   - library, headers, DAT, generated app headers, generated Rust bindings
-2. **Runtime root** (default: `/var/ZRTDB`)
-   - app instances, partition files, runtime meta, snapshots
+B) **Runtime root** (default `/var/ZRTDB`)  
+Contains instantiated app directories (`.sec` partitions, meta, snapshots).
 
 Environment variables:
 
-- `MMDB_STATIC_ROOT` (or legacy `ZRTDB_HOME`) for static root
-- `MMDB_RUNTIME_ROOT` for runtime root
+- `MMDB_STATIC_ROOT` (legacy `ZRTDB_HOME` also supported in code paths)
+- `MMDB_RUNTIME_ROOT`
 
-## 4. Data Modeling
+### 1.3 Runtime directory shape
 
-### 4.1 DAT
+Per app:
 
-A DAT file defines DB schema using directives such as:
+```text
+${MMDB_RUNTIME_ROOT:-/var/ZRTDB}/<APP>/
+├── meta/
+│   └── apps/
+│       ├── <APP>.sec
+│       └── <APP>_NEW.sec
+├── zrtdb_data/
+│   ├── <DB1>/<PART_A>.sec ...
+│   └── <DB2>/<PART_B>.sec ...
+├── <APP>_YYYYMMDD-HHMMSS.mmm/   # snapshot dir
+│   ├── meta/apps/...
+│   ├── zrtdb_data/...
+│   └── manifest.json
+└── .snaplock
+```
+
+---
+
+## 2. Toolchain and Typical Workflow
+
+Main executables:
+
+- `zrtdb_model`: scans DAT, compiles definitions, and instantiates runtime artifacts
+- `zrtdb_tool`: runtime operations (query/view/write/snapshot/status)
+- business process: usually includes generated app header/binding and initializes mapping once
+
+Recommended workflow:
+
+1. Edit `DAT/*.DAT` and `DAT/APPDAT.json`.
+2. Run `zrtdb_model`.
+3. Start business processes (C/C++/Rust).
+4. Use `zrtdb_tool` for operations and diagnosis.
+
+---
+
+## 3. Modeling Formats (DAT / APPDAT.json)
+
+### 3.1 DAT directives
+
+Common directives:
 
 - `/DBNAME:<DB>`
 - `/RECORD:<REC> DIM:<N>`
 - `/PARTITION:<PART>`
-- `/FIELD:<NAME> TYPE:<T> [COMMENT:<text>]`
+- `/FIELD:<NAME> TYPE:<T>`
+- `COMMENT:<text>` for machine-readable descriptions
 
-C/C++-style comments (`//`, `/* ... */`) are ignored.
+Comments:
 
-### 4.2 APPDAT.json
+- `// ...` and `/* ... */` are true comments and are ignored by parser/tooling.
+- Field/record descriptions should use `COMMENT:`.
 
-`DAT/APPDAT.json` defines apps and DB dependencies, for example:
+Field binding rule:
+
+- If field name has suffix `_<RECORD_NAME>`, it is bound to that record (array with record dimension).
+- Otherwise it is a global scalar/fixed-length field.
+
+### 3.2 Type mapping
+
+Current implementation supports (case-insensitive):
+
+- `int` / `int32` -> 4 bytes
+- `long` / `int64` -> 8 bytes
+- `float` -> 4 bytes
+- `double` -> 8 bytes
+- `string<N>` -> fixed byte array (implementation currently constrains upper bound)
+
+### 3.3 Partition and alignment behavior
+
+Runtime file granularity is **partition** (not record).
+
+Compiler behavior includes:
+
+- force-create a main partition named `<DB>`
+- insert partition header/sentinel fields where required by model rules
+- pad partition size to 4KiB boundaries
+- generate LV (logical valid rows) helpers for records
+
+Engineering recommendation: always rely on generated headers/bindings instead of manually calculating offsets.
+
+### 3.4 APPDAT.json
+
+`DAT/APPDAT.json` defines apps and referenced DBs centrally, for example:
 
 ```json
 {
@@ -65,15 +144,52 @@ C/C++-style comments (`//`, `/* ... */`) are ignored.
 }
 ```
 
-## 5. Build and Install
+---
+
+## 4. Runtime `.sec` and meta semantics
+
+### 4.1 Partition file path
+
+```text
+${MMDB_RUNTIME_ROOT:-/var/ZRTDB}/<APP>/zrtdb_data/<DB>/<PART>.sec
+```
+
+### 4.2 Two meta files per app
+
+In `meta/apps/`:
+
+- `<APP>.sec`: static/clone meta
+- `<APP>_NEW.sec`: runtime/instance meta
+
+`setContext(APP)` loads both meta files.
+
+### 4.3 Partition name forms: `PART` and `PART/DB`
+
+For disambiguation in multi-DB apps:
+
+- `PART` defaults to `DB=PART` in conventional cases
+- `PART/DB` explicitly identifies DB ownership
+
+Generated constants `ZRTDB_PART_<DB>_<PART>` use `PART/DB` form.
+
+---
+
+## 5. Build and Install (CMake)
+
+### 5.1 Build
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j
+```
+
+### 5.2 Install
+
+```bash
 sudo cmake --install build
 ```
 
-Key generated/install outputs include:
+Default static root install artifacts:
 
 - `/usr/local/ZRTDB/libzrtdb.a`
 - `/usr/local/ZRTDB/include/*.h`
@@ -81,41 +197,122 @@ Key generated/install outputs include:
 - `/usr/local/ZRTDB/header/inc/<APP>.h`
 - `/usr/local/ZRTDB/header/rust/<APP>.rs`
 
-## 6. Typical Workflow
+### 5.3 Environment setup recommendation
 
-1. Edit DAT and `APPDAT.json` in static root.
-2. Run `zrtdb_model` to compile definitions and instantiate runtime data.
-3. Start business applications that call `RegisterApp_` / `MapMemory_` (or generated helper init).
-4. Use `zrtdb_tool` for inspection and operations.
+Set explicit roots in deployment scripts to avoid ambiguity:
 
-## 7. Runtime API (C ABI)
+```bash
+export MMDB_STATIC_ROOT=/usr/local/ZRTDB
+export MMDB_RUNTIME_ROOT=/var/ZRTDB
+```
 
-Public API is in `include/zrtdb.h`:
+---
 
-- `RegisterApp_(const char* app_name)`
-- `MapMemory_(const char* part_nm, char** part_addr)`
-- `free_MapMemory_()`
-- `SnapshotReadLock_()` / `SnapshotReadUnlock_()`
-- `SaveSnapshot_(char* out_path, int out_len)`
-- `LoadSnapshot_(const char* snapshot_name_or_path)`
+## 6. `zrtdb_model`: compile + instantiate
 
-Generated app headers also provide:
+`zrtdb_model` does three things:
 
-- `zrtdb_app_<app>_init(zrtdb_app_<app>_ctx_t* ctx)`
+1. scan DAT directory
+2. compile DB/APP definitions (`.DBDEF`, `.APPDEF`)
+3. instantiate runtime app directories and partition files
 
-## 8. Rust Interface (Auto-generated from DAT)
+It also generates:
 
-Rust bindings are generated automatically by `zrtdb_model`:
+- C headers: `header/inc/<APP>.h`
+- Rust bindings: `header/rust/<APP>.rs`
 
-- output path: `header/rust/<APP>.rs`
-- generated from the same DAT/APPDAT model source as C headers
-- includes:
-  - `unsafe extern "C"` declarations (`RegisterApp_`, `MapMemory_`)
-  - partition/app constants
-  - `#[repr(C, packed)]` partition structs
-  - app context struct and Rust init helper
+---
 
-Recommended Rust flow:
+## 7. `zrtdb_watchdog`: audit and overflow fuse
+
+Watchdog focuses on operational safety:
+
+- audit events for key runtime operations
+- severe overflow detection/fuse actions according to model/runtime constraints
+
+Use it as a guardrail layer, not a replacement for business-level validation.
+
+---
+
+## 8. `zrtdb_tool`: operations guide
+
+`zrtdb_tool <APP> [DB]` provides runtime maintenance features including:
+
+- status display (mapped partitions, process visibility, metadata)
+- field query/update
+- tabular page view for record-oriented inspection
+- expression filtering and sorting
+- snapshot creation/load operations
+
+Practical recommendations:
+
+1. use `LIMIT` for expensive scans
+2. filter coarse-to-fine in expressions
+3. combine `SORT` with `LIMIT`
+4. keep business-critical logic in application code, not operations CLI scripts
+
+---
+
+## 9. Runtime mapping API and business-side integration
+
+### 9.1 C ABI (`include/zrtdb.h`)
+
+Main functions:
+
+```c
+int RegisterApp_(const char* app_name);
+int MapMemory_(const char* part_nm, char** part_addr);
+int free_MapMemory_();
+
+int SnapshotReadLock_();
+int SnapshotReadUnlock_();
+int SaveSnapshot_(char* out_path, int out_len);
+int LoadSnapshot_(const char* snapshot_name_or_path);
+```
+
+Generated app helpers:
+
+```c
+int zrtdb_app_<app>_init(zrtdb_app_<app>_ctx_t* ctx);
+```
+
+### 9.2 C++ helper layer
+
+`mmdb::MmdbManager` provides context and partition mapping APIs internally used by runtime/tooling.
+For long-term ABI stability, prefer C ABI for external integrations.
+
+### 9.3 Snapshot lock cooperation
+
+Writers should use `SnapshotReadLock_/Unlock_` around write batches.
+Snapshot save/load obtains writer-side lock and is a low-frequency operations action.
+
+---
+
+## 10. Rust Interface (DAT-driven auto generation)
+
+### 10.1 Design goals
+
+Rust interface reuses DAT compiler outputs, ensuring Rust/C/C++ interpret the same `.sec` layout consistently.
+
+### 10.2 Path and trigger
+
+- output directory: `header/rust/`
+- output file: `header/rust/<APP>.rs`
+- generated automatically when `zrtdb_model` compiles app definitions
+
+### 10.3 Generated content
+
+Each generated Rust file contains:
+
+- `unsafe extern "C"` declarations (`RegisterApp_`, `MapMemory_`)
+- app/partition/capacity constants
+- `#[repr(C, packed)]` structs matching partition layout
+- app context struct (mapped partition pointers)
+- Rust helper `zrtdb_app_<app>_init(...)`
+
+> Note: packed structs can imply unaligned field access. In Rust business code, use safe unaligned-read patterns where needed.
+
+### 10.4 Recommended Rust workflow
 
 ```bash
 zrtdb_model
@@ -124,27 +321,45 @@ cargo build
 cargo run
 ```
 
-`example_rs/build.rs` copies generated bindings from `${ZRTDB_STATIC_ROOT:-/usr/local/ZRTDB}/header/rust/<APP>.rs` into `OUT_DIR` and links `libzrtdb.a`.
+`example_rs/build.rs` copies generated binding source from `${ZRTDB_STATIC_ROOT:-/usr/local/ZRTDB}/header/rust/<APP>.rs` to `OUT_DIR` and links `libzrtdb.a`.
 
-## 9. Snapshots and Operational Notes
+### 10.5 Interop boundaries with C/C++
 
-- Snapshots are low-frequency operations; avoid invoking in hard real-time loops.
-- Snapshot/load uses cooperative lock semantics with writers.
-- For schema/layout changes, restart mapping processes to avoid mixed-version interpretation.
+- DAT/APPDAT remains the single contract source.
+- Do not manually edit generated `.h`/`.rs` files.
+- After layout change, restart mapping processes to avoid mixed-version interpretation.
 
-## 10. Troubleshooting
+---
 
-- **Meta not found**: run `zrtdb_model` and confirm `<APP>.sec` / `<APP>_NEW.sec` in runtime meta path.
-- **Incomplete mapped-by list in tool**: likely OS permission/`/proc` visibility limitations.
-- **Layout mismatch after DAT change**: treat as version switch; rebuild/re-instantiate and restart apps.
+## 11. Snapshot notes
 
-## 11. When to Choose ZRTDB
+Snapshot directory includes meta and partition data plus `manifest.json`.
+Implementation may use reflink where available, otherwise copy fallback.
 
-ZRTDB is a strong fit when you need:
+`LoadSnapshot_` performs in-place overwrite on target paths. Treat load operations as maintenance activities and coordinate with process lifecycle.
 
-- single-host, high-throughput deterministic IPC
-- fixed schema with strict layout control
-- operational visibility and fast root-cause workflows
-- model artifacts separated from runtime instances for traceability
+---
 
-If you need cross-host discovery, QoS-rich networking, and broad interoperability, middleware like DDS/zenoh/eCAL may be more appropriate.
+## 12. FAQ / Troubleshooting
+
+1. **`Meta file not found for APP=...`**  
+   Run `zrtdb_model` and verify runtime meta files exist.
+
+2. **Incomplete mapped-by list in `status`**  
+   Usually due to `/proc` visibility or permission policies.
+
+3. **Incompatibility after `.sec` rebuild**  
+   Treat as a version switch; restart all mapping processes.
+
+---
+
+## 13. Technology positioning
+
+Choose ZRTDB when you need:
+
+1. high controllability and auditability
+2. deterministic fixed-layout in-memory access
+3. strong runtime observability (tool + watchdog)
+4. clear separation between model artifacts and runtime instances
+
+If you need cross-host discovery/interoperability and QoS-rich networking, technologies like DDS/zenoh/eCAL are often a better fit.
