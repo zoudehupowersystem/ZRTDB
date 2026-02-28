@@ -42,18 +42,18 @@ public:
         return isTty_;
     }
 
-    // Style helpers (use conservative palette; readable on dark/light backgrounds).
-    std::string record(std::string_view s) const { return wrap(s, "\x1b[1;36m"); }  // bold cyan
-    std::string field(std::string_view s) const { return wrap(s, "\x1b[1;33m"); }   // bold yellow
-    std::string comment(std::string_view s) const { return wrap(s, "\x1b[2;32m"); } // dim green
-    std::string idx(std::string_view s) const { return wrap(s, "\x1b[2m"); }         // dim
-    std::string number(std::string_view s) const { return wrap(s, "\x1b[36m"); }     // cyan
-    std::string str(std::string_view s) const { return wrap(s, "\x1b[35m"); }        // magenta
-    std::string warn(std::string_view s) const { return wrap(s, "\x1b[33m"); }       // yellow
-    std::string err(std::string_view s) const { return wrap(s, "\x1b[31m"); }        // red
-    std::string critical(std::string_view s) const { return wrap(s, "\x1b[1;31m"); } // bold red
-    std::string dim(std::string_view s) const { return wrap(s, "\x1b[2m"); }
-    std::string prompt(std::string_view s) const { return wrap(s, "\x1b[1;34m"); }   // bold blue
+    // Style helpers (high-contrast, VSCode-like terminal palette).
+    std::string record(std::string_view s) const { return wrap(s, "\x1b[1;94m"); }  // bright blue
+    std::string field(std::string_view s) const { return wrap(s, "\x1b[1;93m"); }   // bright yellow
+    std::string comment(std::string_view s) const { return wrap(s, "\x1b[1;92m"); } // bright green
+    std::string idx(std::string_view s) const { return wrap(s, "\x1b[1;90m"); }      // bright black/gray
+    std::string number(std::string_view s) const { return wrap(s, "\x1b[1;96m"); }   // bright cyan
+    std::string str(std::string_view s) const { return wrap(s, "\x1b[1;95m"); }      // bright magenta
+    std::string warn(std::string_view s) const { return wrap(s, "\x1b[1;93m"); }     // bright yellow
+    std::string err(std::string_view s) const { return wrap(s, "\x1b[1;91m"); }      // bright red
+    std::string critical(std::string_view s) const { return wrap(s, "\x1b[1;97;41m"); } // white on red
+    std::string dim(std::string_view s) const { return wrap(s, "\x1b[90m"); }
+    std::string prompt(std::string_view s) const { return wrap(s, "\x1b[1;94m"); }  // bright blue
 
 private:
     Mode mode_ = Mode::Auto;
