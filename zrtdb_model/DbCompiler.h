@@ -20,6 +20,7 @@ public:
     std::filesystem::path datPath() const;
     std::filesystem::path defPath() const;
     std::filesystem::path incPath() const;
+    std::filesystem::path rustPath() const;
 
     // Compile a single DB .DAT to DBDEF (and cache in-memory for later app header generation)
     bool compileDbFile(const std::filesystem::path& dbDatFile);
@@ -41,6 +42,8 @@ private:
 
     // Generate a single merged header for an APP: header/inc/<APP>.h
     void generateAppHeader(const std::string& appUpper, const app_strc_dat& app);
+    // Generate Rust bindings for an APP: header/rust/<APP>.rs
+    void generateAppRust(const std::string& appUpper, const app_strc_dat& app);
 
     bool getDbDefCachedOrLoad(const std::string& dbUpper, db_strc_dat& out);
 
