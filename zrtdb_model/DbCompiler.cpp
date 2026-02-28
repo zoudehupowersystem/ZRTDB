@@ -1309,7 +1309,7 @@ void DbCompiler::generateAppRust(const std::string& appUpper, const app_strc_dat
     os << "// APP: " << appUpper << "\n\n";
     os << "use core::ffi::{c_char, c_int};\n\n";
 
-    os << "unsafe extern \"C\" {\n";
+    os << "extern \"C\" {\n";
     os << "    pub fn RegisterApp_(app_name: *const c_char) -> c_int;\n";
     os << "    pub fn MapMemory_(part_nm: *const c_char, part_addr: *mut *mut c_char) -> c_int;\n";
     os << "    pub fn free_MapMemory_() -> c_int;\n";
