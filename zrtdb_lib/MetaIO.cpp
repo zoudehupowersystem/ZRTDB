@@ -170,6 +170,7 @@ bool saveClone(const std::filesystem::path& file, const StaticModelConfig& clone
         // v2 兼容策略：新字段一律追加在文件尾部，旧版 loadClone 不会读到这里。
         // record_physical_dim 用于“物理容量缓冲”，为空时建议按 record_max_dim 处理。
         writeVector(ofs, clone.record_physical_dim);
+        writeString(ofs, clone.layout_fingerprint);
         return true;
     } catch (...) {
         return false;
@@ -217,6 +218,7 @@ bool loadClone(const std::filesystem::path& file, StaticModelConfig& clone)
         } catch (...) {
             clone.record_physical_dim = clone.record_max_dim;
         }
+        try { readString(ifs, clone.layout_fingerprint); } catch (...) { clone.layout_fingerprint.clear(); }
         return true;
     } catch (...) {
         return false;
@@ -269,6 +271,7 @@ bool saveRuntime(const std::filesystem::path& file, const RuntimeAppConfig& app)
 
         // v2 兼容策略：新字段追加在文件尾部。
         writeVector(ofs, app.record_physical_dim);
+        writeString(ofs, app.layout_fingerprint);
         return true;
     } catch (...) {
         return false;
@@ -328,6 +331,7 @@ bool loadRuntime(const std::filesystem::path& file, RuntimeAppConfig& app)
         } catch (...) {
             app.record_physical_dim = app.record_max_dim;
         }
+        try { readString(ifs, app.layout_fingerprint); } catch (...) { app.layout_fingerprint.clear(); }
         return true;
     } catch (...) {
         return false;

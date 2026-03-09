@@ -184,6 +184,8 @@ void DbIoShell::initCommands()
     // NEW
     commands_["STATUS"] = [this](auto s) { cmdStatus(s); };
     commands_["ST"] = [this](auto s) { cmdStatus(s); }; // 可选别名
+    commands_["DB"] = [this](auto s) { cmdSwitchDb(s); };
+    commands_["EXPORTJSON"] = [this](auto s) { cmdExportJson(s); };
 
     // Query / Locate / Sort
     commands_["SEL"] = [this](auto s) { cmdSelect(s); };
@@ -391,6 +393,8 @@ void DbIoShell::cmdHelp(const std::string&)
         << "  show/RECNAME       table view (10x10)\n"
         << "  show/item          global table view\n"
         << "  status             runtime status (apps/sec/proc maps)\n"
+        << "  DB <name>          switch current DB in-session\n"
+        << "  EXPORTJSON [file]  dump current scope to JSON (default ./zrtdb_export.json)\n"
         << "  SEL <expr> [COLS ...] [SORT ...] [LIMIT n|ALL] [OFFSET n] [GOTO first|k]\n"
         << "                     filter/query current scope (record or ITEM); output a table\n"
         << "  FIND <expr> [...]   like SEL, but default LIMIT 1 and GOTO FIRST\n"
@@ -677,6 +681,64 @@ void DbIoShell::cmdLoadSnap(const std::string& args)
     } catch (const std::exception& e) {
         std::cout << "[snapshot] load failed: " << e.what() << "\n";
     }
+}
+
+
+void DbIoShell::cmdSwitchDb(const std::string& args)
+{
+    std::string db = upper(trim(args));
+    if (db.empty()) {
+        std::cout << "Usage: DB <db_name>\n";
+        return;
+    }
+    if (!switchToDb(db)) {
+        std::cout << "DB not found: " << db << "\n";
+        return;
+    }
+    std::cout << "Switched DB to " << ctx_.dbName << "\n";
+}
+
+void DbIoShell::cmdExportJson(const std::string& args)
+{
+    fs::path out = trim(args).empty() ? fs::path("zrtdb_export.json") : fs::path(trim(args));
+    std::ofstream ofs(out, std::ios::binary | std::ios::trunc);
+    if (!ofs) {
+        std::cout << "Cannot open output: " << out << "\n";
+        return;
+    }
+
+    ofs << "{\n";
+    ofs << "  \"app\": \"" << escape_json(appUpper_) << "\",\n";
+    ofs << "  \"db\": \"" << escape_json(ctx_.dbName) << "\",\n";
+    ofs << "  \"scope\": \"" << (ctx_.isGlobal ? "ITEM" : escape_json(ctx_.recName)) << "\",\n";
+    ofs << "  \"rows\": [\n";
+
+    int lv = 1;
+    std::vector<int> flds;
+    if (ctx_.isGlobal) {
+        flds = collect_global_fields_in_db(ctx_.dbIdx);
+        lv = 1;
+    } else {
+        flds = collect_record_fields(ctx_.recIdx);
+        lv = std::max(0, getLVForRecordGlobalIndex(ctx_.recIdx));
+    }
+
+    for (int row = 1; row <= lv; ++row) {
+        if (row > 1) ofs << ",\n";
+        ofs << "    {";
+        bool first = true;
+        for (int f : flds) {
+            if (f < 0 || f >= g_runtime_app.field_count) continue;
+            const std::string key = upper(trim(g_runtime_app.field_ids[(size_t)f]));
+            auto v = DataAccessor::formatValue(DataAccessor::getValue(f, row));
+            if (!first) ofs << ",";
+            first = false;
+            ofs << "\"" << escape_json(key) << "\":\"" << escape_json(v) << "\"";
+        }
+        ofs << "}";
+    }
+    ofs << "\n  ]\n}\n";
+    std::cout << "Exported JSON: " << out << "\n";
 }
 
 void DbIoShell::cmdQuit(const std::string&)

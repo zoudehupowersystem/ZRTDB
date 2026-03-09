@@ -68,6 +68,8 @@ private:
     void cmdPrev(const std::string&);
 
     void cmdStatus(const std::string&);
+    void cmdSwitchDb(const std::string&);
+    void cmdExportJson(const std::string&);
 
     // View
     bool handleViewKey(const std::string& line);

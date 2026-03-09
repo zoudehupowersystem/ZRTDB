@@ -10,6 +10,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 
 // 运行期全局元数据（单进程内有效）：
 // - g_static_model：静态建模 meta（来自 <APP>.sec）
@@ -119,6 +120,13 @@ bool MmdbManager::loadMetaData()
         return false;
     }
 
+    if (!g_static_model.layout_fingerprint.empty() && !g_runtime_app.layout_fingerprint.empty()
+        && g_static_model.layout_fingerprint != g_runtime_app.layout_fingerprint) {
+        std::cerr << "Layout fingerprint mismatch between static/runtime meta: "
+                  << g_static_model.layout_fingerprint << " vs " << g_runtime_app.layout_fingerprint << std::endl;
+        return false;
+    }
+
     // 清空运行期映射地址（随后由 mapPartition() 在当前进程内填充）。
     std::fill(g_runtime_app.partition_base_addrs.begin(), g_runtime_app.partition_base_addrs.end(), 0);
     std::fill(g_runtime_app.record_lv_addrs.begin(), g_runtime_app.record_lv_addrs.end(), 0);
@@ -188,8 +196,21 @@ int MmdbManager::mapPartition(std::string_view partName, char** partAddr, bool r
     }
 
     try {
-        auto mapped = std::make_unique<MappedFile>(filePath, readOnly);
-        if (expectedMin > 0 && static_cast<long>(mapped->size()) < expectedMin) {
+
+    {
+        auto man = filePath;
+        man += ".manifest";
+        std::ifstream mif(man);
+        if (mif && !g_runtime_app.layout_fingerprint.empty()) {
+            std::string body((std::istreambuf_iterator<char>(mif)), std::istreambuf_iterator<char>());
+            if (body.find(g_runtime_app.layout_fingerprint) == std::string::npos) {
+                std::cerr << "Layout fingerprint mismatch for sec manifest: " << man << std::endl;
+                return -1;
+            }
+        }
+    }
+
+        auto mapped = std::make_unique<MappedFile>(filePath, readOnly);        if (expectedMin > 0 && static_cast<long>(mapped->size()) < expectedMin) {
             throw std::runtime_error("sec size too small: " + filePath.string());
         }
         *partAddr = static_cast<char*>(mapped->data());

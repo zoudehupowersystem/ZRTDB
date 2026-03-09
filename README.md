@@ -282,6 +282,13 @@ export MMDB_RUNTIME_ROOT=/var/ZRTDB
 - `${MMDB_STATIC_ROOT}/header/.datdef/<APP>.APPDEF`
 - `${MMDB_STATIC_ROOT}/header/inc/*`（供业务侧 include）
 
+布局一致性（layout fingerprint）：
+
+- `zrtdb_model` 会基于 DB/Record/Field 逻辑结构、分区字节布局、类型映射结果与代码生成版本计算统一 fingerprint；
+- fingerprint 会写入 `.DBDEF/.APPDEF`、runtime meta（`<APP>.sec` 与 `<APP>_NEW.sec`）、生成的 C/Rust 头文件常量；
+- 同时为每个分区 `.sec` 生成同目录侧车 `*.sec.manifest`（包含 fingerprint）；
+- 运行期 `RegisterApp_()/MapMemory_()` 会校验 fingerprint，不兼容时直接拒绝映射，而不是“建议重启”。
+
 ---
 
 ## 7. zrtdb_watchdog：审计日志 + 越界保险丝
@@ -290,7 +297,7 @@ export MMDB_RUNTIME_ROOT=/var/ZRTDB
 
 1) 记录审计日志（tool 交互、库接口调用的关键动作）
 2) 周期性监测每个 record 的 `LV$<REC>` 与建模维度 `MX`
-3) 提供硬保险丝：当任何 record 的 `LV > 3*MX` 时，立刻杀掉所有映射该 APP 的进程，防止进一步破坏共享内存
+3) 提供硬保险丝：当任何 record 的 `LV > 3*MX` 时，先做紧急快照并记录触发原因，再立刻杀掉所有映射该 APP 的进程，防止进一步破坏共享内存
 
 ### 7.1 自动拉起（无需用户手工启动）
 
@@ -370,6 +377,8 @@ zrtdb_tool <APP> [DB]
 - `NEXT` / `N`：在“上一次 SEL/FIND 的命中集合”中跳到下一条，并自动 `show current`（便于巡检定位）
 - `PREV` / `B`：在“上一次 SEL/FIND 的命中集合”中跳到上一条
 - `status`：扫描运行期根目录并汇总（meta、`.sec` 文件、映射进程；受权限影响可能不完整）
+- `DB <name>`：会话内切换当前 DB
+- `EXPORTJSON [file]`：导出当前作用域（ITEM 或当前记录）为 JSON，默认 `./zrtdb_export.json`
 - `SNAP [note...]`：保存快照到 `/var/ZRTDB/<APP>/<APP>_YYYYMMDD-HHMMSS.mmm/`
 - `LSNAP`：列出当前 APP 的快照
 - `LOADSNAP <dir>`：恢复某个快照（可传相对名或绝对路径）
@@ -616,11 +625,17 @@ Rust 接口的目标不是“手写一套并行模型”，而是**复用现有 
 
 - `unsafe extern "C"` 声明：`RegisterApp_`、`MapMemory_`；
 - APP/分区/容量常量（与 DAT 编译结果一致）；
+- `ZRTDB_LAYOUT_FINGERPRINT` 常量（可用于运行时一致性核对）；
 - `#[repr(C, packed)]` 的分区结构体定义（字段顺序与字节布局匹配 C 侧）；
+- 每个分区结构体自动生成 `get_*/set_*` 安全访问器：
+  - 标量字段：使用 `read_unaligned/write_unaligned`；
+  - 数组字段：自动做索引范围检查（越界返回 `OutOfRange`）；
+  - 定长字符串字段：按字节数组安全读写（不暴露未对齐引用）；
 - `zrtdb_app_<app>_ctx_t` 上下文结构体（分区指针集合）；
+- `ZrtdbRo/ZrtdbRw` typed view 包装与 `*_ro/*_rw` 访问函数（避免直接裸指针游走）；
 - `zrtdb_app_<app>_init(...)`：对 `RegisterApp_ + MapMemory_` 的 Rust 侧便捷封装。
 
-> 注意：`packed` 结构上的字段访问在 Rust 中可能触发未对齐访问风险。建议在业务层使用 `ptr::read_unaligned` / 拷贝到对齐本地变量后再计算，避免直接借用未对齐字段引用。
+> 说明：仍保留 raw `#[repr(C, packed)]` 作为 FFI 真相；推荐业务层优先使用自动生成的访问器与 typed view，而不是直接对 packed 字段取引用。
 
 ### 10.4 推荐工作流（Rust）
 
@@ -641,7 +656,7 @@ cargo run
 ### 10.5 与 C/C++ 的协同边界
 
 - **模型源头统一**：DAT / APPDAT 是唯一契约源，不建议手改生成的 `.rs/.h` 文件。  
-- **版本切换规则一致**：DAT 变更后应整体重启相关映射进程，防止旧进程按旧布局解释新 `.sec`。  
+- **版本切换规则一致**：DAT 变更后旧进程可能因 fingerprint 不匹配而被拒绝映射；仍建议工程上执行“重建 + 重启/重映射”以保持行为一致。  
 - **运维工具通用**：Rust 进程写入的数据可直接被 `zrtdb_tool`、快照与 watchdog 观察和审计。
 
 ---
@@ -689,4 +704,3 @@ cargo run
 4. 建模产物与运行期实例分离：这是工程化的分水岭。中间件生态往往忽略这一点，但实时仿真/控制现场极其在意版本与实例的可追溯。
 
 那么ZRTDB这类“模型先行的共享内存数据平面”更贴合，并且更容易落地与长期维护。
-
