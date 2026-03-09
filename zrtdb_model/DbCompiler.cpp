@@ -5,6 +5,7 @@
 #include "DbCompiler.h"
 
 #include "DefIO.hpp"
+#include "zrtdb_fingerprint.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -208,6 +209,48 @@ static bool map_type(const std::string& tIn, char& code, int& bytes)
     return false;
 }
 
+
+static std::string model_codegen_version()
+{
+    return "zrtgen-cpp20-rustsafe-v1";
+}
+
+static std::string compute_db_fingerprint(const db_strc_dat& db)
+{
+    zrtdb::fingerprint::Fnv64 h;
+    h.addString("DB");
+    h.addString(db.db_id);
+    h.addPodLE<std::uint32_t>((std::uint32_t)db.record_count);
+    h.addPodLE<std::uint32_t>((std::uint32_t)db.partition_count);
+    for (const auto& s : db.record_ids) h.addString(s);
+    for (int v : db.record_max_dim) h.addPodLE<std::int32_t>(v);
+    for (int v : db.record_physical_dim) h.addPodLE<std::int32_t>(v);
+    for (const auto& s : db.partition_ids) h.addString(s);
+    for (int v : db.partition_size_bytes) h.addPodLE<std::int32_t>(v);
+    for (int v : db.partition_field_prefix) h.addPodLE<std::int32_t>(v);
+    for (size_t i=0;i<db.field_ids.size();++i) {
+        h.addString(db.field_ids[i]);
+        if (i<db.field_type.size()) h.addByte((std::uint8_t)db.field_type[i]);
+        if (i<db.field_record_1based.size()) h.addPodLE<std::int32_t>(db.field_record_1based[i]);
+        if (i<db.field_bytes.size()) h.addPodLE<std::int32_t>(db.field_bytes[i]);
+        if (i<db.field_valid.size()) h.addByte((std::uint8_t)db.field_valid[i]);
+    }
+    h.addString(model_codegen_version());
+    return h.hex();
+}
+
+static std::string compute_app_fingerprint(const std::string& appUpper, const std::vector<db_strc_dat>& dbs)
+{
+    zrtdb::fingerprint::Fnv64 h;
+    h.addString("APP");
+    h.addString(appUpper);
+    for (const auto& db: dbs) {
+        h.addString(db.db_id);
+        h.addString(db.layout_fingerprint);
+    }
+    h.addString(model_codegen_version());
+    return h.hex();
+}
 DbCompiler::DbCompiler() { }
 
 fs::path DbCompiler::home() const
@@ -260,6 +303,7 @@ bool DbCompiler::compileDbFile(const fs::path& dbDatFile)
         return false;
     }
 
+    db.layout_fingerprint = compute_db_fingerprint(db);
     std::string dbUpper = upper(db.db_id);
     fs::create_directories(defPath());
 
@@ -301,6 +345,18 @@ bool DbCompiler::compileAppFile(const fs::path& appDatFile, std::string& outAppN
 
     outAppNameUpper = upper(app.app_id);
 
+    std::vector<db_strc_dat> dbs;
+    dbs.reserve(app.db_ids.size());
+    for (const auto& dbId : app.db_ids) {
+        db_strc_dat db;
+        if (!getDbDefCachedOrLoad(upper(dbId), db))
+            return false;
+        if (db.layout_fingerprint.empty())
+            db.layout_fingerprint = compute_db_fingerprint(db);
+        dbs.push_back(db);
+    }
+    app.layout_fingerprint = compute_app_fingerprint(outAppNameUpper, dbs);
+
     fs::create_directories(defPath());
     auto defFile = defPath() / (outAppNameUpper + ".APPDEF");
 
@@ -338,6 +394,18 @@ bool DbCompiler::compileAppConfig(const fs::path& appConfigFile, std::vector<std
 
         for (auto& app : apps) {
             const std::string appUpper = upper(app.app_id);
+            std::vector<db_strc_dat> dbs;
+            dbs.reserve(app.db_ids.size());
+            for (const auto& dbId : app.db_ids) {
+                db_strc_dat db;
+                if (!getDbDefCachedOrLoad(upper(dbId), db))
+                    return false;
+                if (db.layout_fingerprint.empty())
+                    db.layout_fingerprint = compute_db_fingerprint(db);
+                dbs.push_back(db);
+            }
+            app.layout_fingerprint = compute_app_fingerprint(appUpper, dbs);
+
             auto defFile = defPath() / (appUpper + ".APPDEF");
             if (!zrtdb::def::saveAppDef(defFile, app)) {
                 std::cerr << "Failed to write APPDEF: " << defFile << std::endl;
@@ -1320,7 +1388,7 @@ void DbCompiler::generateAppRust(const std::string& appUpper, const app_strc_dat
     os << "}\n\n";
 
     os << "pub const ZRTDB_APP_NAME_" << appUpperSan << ": &[u8] = b\"" << appUpper << "\\0\";\n";
-
+    os << "pub const ZRTDB_LAYOUT_FINGERPRINT: &str = \"" << app.layout_fingerprint << "\";\n\n";
     for (const auto& db : dbs) {
         const std::string dbUpper = upper(db.db_id);
         const std::string dbUpperSan = sanitize_ident(dbUpper, false);

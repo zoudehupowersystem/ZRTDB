@@ -7,6 +7,7 @@
 #include "DefIO.hpp"
 #include "MetaIO.hpp"
 #include "StringUtils.h"
+#include "zrtdb_fingerprint.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -177,6 +178,18 @@ bool Instantiator::mergeDbDefs(const app_strc_dat& appDef, StaticModelConfig& ou
     // masks are currently unused in the C++20 refactor; keep a correctly-sized placeholder.
     outClone.field_mask_index.assign((size_t)curFld + 1, 0);
 
+    zrtdb::fingerprint::Fnv64 fh;
+    fh.addString(outClone.app_id);
+    for (const auto& s : outClone.db_ids) fh.addString(s);
+    for (const auto& s : outClone.record_ids) fh.addString(s);
+    for (int v : outClone.record_max_dim) fh.addPodLE<std::int32_t>(v);
+    for (int v : outClone.record_physical_dim) fh.addPodLE<std::int32_t>(v);
+    for (const auto& s : outClone.partition_ids) fh.addString(s);
+    for (int v : outClone.partition_size_bytes) fh.addPodLE<std::int32_t>(v);
+    for (const auto& s : outClone.field_ids) fh.addString(s);
+    for (char c : outClone.field_type) fh.addByte((std::uint8_t)c);
+    outClone.layout_fingerprint = fh.hex();
+
     return true;
 }
 
@@ -185,6 +198,15 @@ bool Instantiator::ensurePhysicalFiles(const std::vector<std::pair<std::string, 
     long page = sysconf(_SC_PAGESIZE);
     if (page <= 0)
         page = 4096;
+
+    zrtdb::fingerprint::Fnv64 appHash;
+    appHash.addString("APP");
+    appHash.addString(appUpper_);
+    for (const auto& [dbUpper0, dbDef0] : loaded) {
+        appHash.addString(dbUpper0);
+        appHash.addString(dbDef0.layout_fingerprint);
+    }
+    const std::string appFp = appHash.hex();
 
     for (const auto& [dbUpper, dbDef] : loaded) {
         auto dir = secsPath() / dbUpper;
@@ -221,6 +243,15 @@ bool Instantiator::ensurePhysicalFiles(const std::vector<std::pair<std::string, 
                 }
                 ofs.seekp(fsz - 1);
                 ofs.write("", 1);
+            }
+            {
+                auto man = secFile;
+                man += ".manifest";
+                std::ofstream mo(man, std::ios::binary | std::ios::trunc);
+                if (mo) {
+                    mo << "{\"db\":\"" << dbUpper << "\",\"partition\":\"" << prt << "\",\"bytes\":" << raw
+                       << ",\"layout_fingerprint\":\"" << appFp << "\"}";
+                }
             }
         }
     }
@@ -403,6 +434,7 @@ void Instantiator::buildRuntime(const app_strc_dat& appDef, const StaticModelCon
     }
 
     out.table_count = total;
+    out.layout_fingerprint = clone.layout_fingerprint;
 
     // Approx record size (sum bytes of record fields; legacy semantics ignores dim)
     for (int r = 1; r <= out.record_count; ++r) {
@@ -451,6 +483,8 @@ bool Instantiator::instantiate(const std::string& appUpper)
     std::vector<std::pair<std::string, db_strc_dat>> loaded;
     if (!mergeDbDefs(appDef, clone, loaded))
         return false;
+    if (!appDef.layout_fingerprint.empty())
+        clone.layout_fingerprint = appDef.layout_fingerprint;
 
     if (!ensurePhysicalFiles(loaded))
         return false;

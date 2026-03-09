@@ -5,6 +5,7 @@
 #include "MmdbManager.hpp"
 #include "StringUtils.h"
 #include "zrtdb_const.h"
+#include "zrtdb.h"
 
 #include <algorithm>
 #include <atomic>
@@ -552,7 +553,19 @@ int main(int argc, char** argv)
         for (int pid : scanProcByMaps(appRoot))
             toKill.insert(pid);
 
-        // 4) kill 并记录动作
+        // 4) 紧急快照 + kill 并记录动作
+        char snapName[256] = {0};
+        if (SaveSnapshot_(snapName, sizeof(snapName)) < 0) {
+            std::ostringstream oss;
+            oss << "{\"ts\":\"" << jsonEscape(nowLocalTimeMs()) << "\",\"app\":\"" << jsonEscape(opt.appUpper)
+                << "\",\"kind\":\"snapshot_failed_before_kill\",\"reason\":" << killReason << "}";
+            appendLogLine(log, oss.str());
+        } else {
+            std::ostringstream oss;
+            oss << "{\"ts\":\"" << jsonEscape(nowLocalTimeMs()) << "\",\"app\":\"" << jsonEscape(opt.appUpper)
+                << "\",\"kind\":\"snapshot_before_kill\",\"name\":\"" << jsonEscape(snapName) << "\",\"reason\":" << killReason << "}";
+            appendLogLine(log, oss.str());
+        }
         killProcesses(toKill, log, selfPid, opt.appUpper, killReason);
     };
 

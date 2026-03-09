@@ -20,12 +20,14 @@ struct app_strc_dat {
     std::string app_id;
     int db_count = 0; // DB 数量
     std::vector<std::string> db_ids; // DB 名列表（与 DBDEF 文件一一对应）
+    std::string layout_fingerprint; // APP 级布局指纹（聚合 DB 指纹 + 生成器版本）
 
     void clear()
     {
         app_id.clear();
         db_count = 0;
         db_ids.clear();
+        layout_fingerprint.clear();
     }
 };
 
@@ -36,6 +38,7 @@ struct db_strc_dat {
     std::string db_id; // DB 名（通常与 DBDEF 文件名一致）
     int record_count = 0; // 记录数
     int partition_count = 0; // 分区数
+    std::string layout_fingerprint; // DB 级布局指纹
 
     std::vector<std::string> record_ids;
     std::vector<int> record_first_addr;
@@ -59,6 +62,7 @@ struct db_strc_dat {
         db_id.clear();
         record_count = 0;
         partition_count = 0;
+        layout_fingerprint.clear();
 
         record_ids.clear();
         record_first_addr.clear();

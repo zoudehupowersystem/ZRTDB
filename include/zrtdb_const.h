@@ -52,6 +52,9 @@ struct RuntimeAppConfig {
     int field_count = 0;
     int table_count = 0;
 
+    // 运行时布局指纹：由建模阶段基于逻辑结构/分区布局/类型映射统一计算。
+    std::string layout_fingerprint;
+
     /*
     partition_base_addrs[i]：
     - 第 i 个分区文件映射到“当前进程”后的基址（进程虚拟地址）。
@@ -147,6 +150,7 @@ struct RuntimeAppConfig {
     void clear()
     {
         db_count = partition_count = record_count = field_count = table_count = 0;
+        layout_fingerprint.clear();
         partition_base_addrs.clear();
         db_ids.clear();
         db_partition_prefix.clear();
@@ -225,6 +229,8 @@ struct StaticModelConfig {
     */
     std::string app_id;
     int db_count = 0;
+    // 静态模型布局指纹（与 RuntimeAppConfig::layout_fingerprint 对齐）。
+    std::string layout_fingerprint;
 
     /*
     DB 前缀索引（prefix array 形式，与 RuntimeAppConfig 的语义一致，但元素类型为 int）：
@@ -260,6 +266,7 @@ struct StaticModelConfig {
     {
         app_id.clear();
         db_count = 0;
+        layout_fingerprint.clear();
         db_ids.clear();
         db_partition_prefix.clear();
         db_record_prefix.clear();

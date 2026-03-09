@@ -148,6 +148,7 @@ bool saveAppDef(const std::filesystem::path& file, const app_strc_dat& app)
         writeString(ofs, app.app_id);
         writePod(ofs, static_cast<std::int32_t>(app.db_count));
         writeVectorString(ofs, app.db_ids);
+        writeString(ofs, app.layout_fingerprint);
         return true;
     } catch (...) {
         return false;
@@ -173,6 +174,7 @@ bool loadAppDef(const std::filesystem::path& file, app_strc_dat& app)
         app.db_count = static_cast<int>(pdb);
 
         readVectorString(ifs, app.db_ids);
+        try { readString(ifs, app.layout_fingerprint); } catch (...) { app.layout_fingerprint.clear(); }
         if (app.db_count < 0)
             app.db_count = 0;
         if ((int)app.db_ids.size() < app.db_count)
@@ -195,6 +197,7 @@ bool saveDbDef(const std::filesystem::path& file, const db_strc_dat& db)
 
         writeString(ofs, db.db_id);
         writePod(ofs, static_cast<std::int32_t>(db.record_count));
+        writeString(ofs, db.layout_fingerprint);
         writePod(ofs, static_cast<std::int32_t>(db.partition_count));
 
         writeVectorString(ofs, db.record_ids);
@@ -239,6 +242,7 @@ bool loadDbDef(const std::filesystem::path& file, db_strc_dat& db)
         std::int32_t prec = 0;
         std::int32_t pprt = 0;
         readPod(ifs, prec);
+        try { readString(ifs, db.layout_fingerprint); } catch (...) { db.layout_fingerprint.clear(); }
         readPod(ifs, pprt);
         db.record_count = static_cast<int>(prec);
         db.partition_count = static_cast<int>(pprt);
