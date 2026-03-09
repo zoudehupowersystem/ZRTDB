@@ -318,10 +318,17 @@ Each generated Rust file contains:
 zrtdb_model
 cd example_rs
 cargo build
-cargo run
+
+# Terminal A: producer
+ZRTDB_DEMO_LOOPS=16 cargo run --bin policy_gen_rs
+
+# Terminal B: consumer
+ZRTDB_DEMO_LOOPS=32 cargo run --bin policy_exec_rs
 ```
 
 `example_rs/build.rs` copies generated binding source from `${ZRTDB_STATIC_ROOT:-/usr/local/ZRTDB}/header/rust/<APP>.rs` to `OUT_DIR` and links `libzrtdb.a`.
+
+Note: `policy_gen_rs` and `policy_exec_rs` are different binaries. Running them separately creates two independent OS processes (not a single process with different parameters).
 
 ### 10.5 Interop boundaries with C/C++
 

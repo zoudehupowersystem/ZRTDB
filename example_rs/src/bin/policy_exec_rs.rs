@@ -16,6 +16,7 @@ unsafe fn read_info(controlptr: *mut zrtdb_control_controlptr_t, row: usize) -> 
 }
 
 fn main() {
+    let pid = std::process::id();
     let ctx = app_init();
     let loops: usize = std::env::var("ZRTDB_DEMO_LOOPS")
         .ok()
@@ -33,7 +34,9 @@ fn main() {
     let mut prev_lv = 0i32;
     let mut last_sig = -1i32;
 
-    for _ in 0..loops {
+    println!("[EXEC][pid={}] loops={} (consumer polling)", pid, loops);
+
+    for tick in 1..=loops {
         let lv_now = unsafe { std::ptr::read_unaligned(std::ptr::addr_of!((*control).LV_COMMANDS)) };
         std::sync::atomic::fence(std::sync::atomic::Ordering::Acquire);
 
@@ -55,7 +58,9 @@ fn main() {
                         let info = read_info(controlptr, row);
 
                         println!(
-                            "consume: row={} id={} val={} sig={} status={} info={}",
+                            "[EXEC][pid={}] tick={:04} consume row={:04} id={} val={:.7} sig={:04} status={} info={}",
+                            pid,
+                            tick,
                             row + 1,
                             id,
                             val,
@@ -66,8 +71,8 @@ fn main() {
 
                         if last_sig >= 0 && sig <= last_sig {
                             eprintln!(
-                                "WARN: non-increasing SIG observed (sig={}, last_sig={})",
-                                sig, last_sig
+                                "[EXEC][pid={}] WARN: non-increasing SIG observed (sig={}, last_sig={})",
+                                pid, sig, last_sig
                             );
                         }
                         last_sig = sig;

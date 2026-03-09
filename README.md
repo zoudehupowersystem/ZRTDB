@@ -646,12 +646,20 @@ zrtdb_model
 # 2) 进入 Rust 示例工程（或你的业务工程）
 cd example_rs
 
-# 3) 编译并运行
+# 3) 编译
 cargo build
-cargo run
+
+# 4) 建议双终端联调（两个独立进程）
+# 终端A：生产者
+ZRTDB_DEMO_LOOPS=16 cargo run --bin policy_gen_rs
+
+# 终端B：消费者
+ZRTDB_DEMO_LOOPS=32 cargo run --bin policy_exec_rs
 ```
 
 `example_rs/build.rs` 会在编译时从 `${ZRTDB_STATIC_ROOT:-/usr/local/ZRTDB}/header/rust/<APP>.rs` 拷贝生成绑定文件到 `OUT_DIR`，并链接 `libzrtdb.a`。
+
+说明：`policy_gen_rs` 与 `policy_exec_rs` 是两个不同的可执行文件；分别运行时会产生两个独立 OS 进程（并非同一进程仅参数不同）。
 
 ### 10.5 与 C/C++ 的协同边界
 
