@@ -24,6 +24,7 @@ unsafe fn write_info(controlptr: *mut zrtdb_control_controlptr_t, row: usize, te
 }
 
 fn main() {
+    let pid = std::process::id();
     let ctx = app_init();
     let loops: usize = std::env::var("ZRTDB_DEMO_LOOPS")
         .ok()
@@ -38,6 +39,8 @@ fn main() {
     let controlptr = ctx.CONTROL_CONTROLPTR;
     let control = ctx.CONTROL_CONTROL;
     let mx = ZRTDB_CONTROL_MX_COMMANDS;
+
+    println!("[GEN][pid={}] loops={} mx={} (run policy_exec_rs in another terminal)", pid, loops, mx);
 
     for seq in 1..=loops {
         let row = (seq - 1) % mx;
@@ -63,7 +66,7 @@ fn main() {
             SnapshotReadUnlock_();
         }
 
-        println!("publish: seq={} lv={}", seq, row + 1);
+        println!("[GEN][pid={}] publish seq={:04} lv={:04} row={:04}", pid, seq, row + 1, row + 1);
 
         if seq == 6 {
             let mut path = [0 as core::ffi::c_char; 512];
@@ -75,7 +78,7 @@ fn main() {
                         .take_while(|&&c| c != 0)
                         .map(|&c| c as u8)
                         .collect();
-                    println!("snapshot={}", String::from_utf8_lossy(&bytes));
+                    println!("[GEN][pid={}] snapshot={}", pid, String::from_utf8_lossy(&bytes));
                 }
             }
         }

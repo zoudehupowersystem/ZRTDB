@@ -646,12 +646,20 @@ zrtdb_model
 # 2) 进入 Rust 示例工程（或你的业务工程）
 cd example_rs
 
-# 3) 编译并运行
+# 3) 编译
 cargo build
-cargo run
+
+# 4) 建议双终端联调（两个独立进程）
+# 终端A：生产者
+ZRTDB_DEMO_LOOPS=16 cargo run --bin policy_gen_rs
+
+# 终端B：消费者
+ZRTDB_DEMO_LOOPS=32 cargo run --bin policy_exec_rs
 ```
 
 `example_rs/build.rs` 会在编译时从 `${ZRTDB_STATIC_ROOT:-/usr/local/ZRTDB}/header/rust/<APP>.rs` 拷贝生成绑定文件到 `OUT_DIR`，并链接 `libzrtdb.a`。
+
+说明：`policy_gen_rs` 与 `policy_exec_rs` 是两个不同的可执行文件；分别运行时会产生两个独立 OS 进程（并非同一进程仅参数不同）。
 
 ### 10.5 与 C/C++ 的协同边界
 
@@ -688,6 +696,16 @@ cargo run
 
 3) `.sec` 重建后的兼容性  
 重建会改变布局与 meta 索引。工程上应把它视为“版本切换”：建议停业务/重启所有映射进程，避免旧进程按旧布局解释新数据。
+
+4) `Layout fingerprint mismatch for sec manifest` / `ZRTDB init failed`  
+这通常表示：进程当前加载的模型布局（代码侧）与磁盘上的 `*.sec.manifest`（数据侧）不是同一版本。常见触发场景是 DAT 更新后只重编了示例程序，但没有重新生成/重建运行时数据目录。建议按顺序执行：
+   - 重新运行 `zrtdb_model`，让 `meta/` 与 `.sec.manifest` 与当前 DAT 对齐；
+   - 清理或重建目标 APP 的运行时目录（默认 `/var/ZRTDB/<APP>/`）；
+   - 重启所有映射该 APP 的进程，再运行 `example/policy_exec_cpp`；
+   - 若仅验证编译链路，可先运行 `example/policy_gen_cpp` 生成测试数据，再执行 `policy_exec_cpp`。
+
+5) `example` 目录下找不到 `bin/`  
+当前示例 CMake 默认在构建目录直接生成可执行文件（如 `example/policy_exec_cpp`），不会自动创建 `bin/` 子目录。可直接 `./policy_exec_cpp` 运行，或改用 out-of-source 构建：`cmake -S example -B build_example && cmake --build build_example`。
 
 ---
 
