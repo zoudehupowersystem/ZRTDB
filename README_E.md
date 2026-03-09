@@ -351,6 +351,16 @@ Implementation may use reflink where available, otherwise copy fallback.
 3. **Incompatibility after `.sec` rebuild**  
    Treat as a version switch; restart all mapping processes.
 
+4. **`Layout fingerprint mismatch for sec manifest` / `ZRTDB init failed`**  
+   This means the process model layout (code side) and on-disk `*.sec.manifest` (data side) are out of sync. A common case is rebuilding examples after DAT changes without regenerating runtime data. Recommended sequence:
+   - run `zrtdb_model` again so `meta/` and manifests match current DAT;
+   - clean/rebuild the target app runtime directory (default `/var/ZRTDB/<APP>/`);
+   - restart all processes mapping that app, then run `example/policy_exec_cpp`;
+   - for compile-chain verification only, run `example/policy_gen_cpp` first, then `policy_exec_cpp`.
+
+5. **No `bin/` directory under `example/`**  
+   The example CMake currently emits executables directly into the build directory (e.g. `example/policy_exec_cpp`), not a `bin/` subdirectory. Run binaries directly, or use out-of-source build: `cmake -S example -B build_example && cmake --build build_example`.
+
 ---
 
 ## 13. Technology positioning

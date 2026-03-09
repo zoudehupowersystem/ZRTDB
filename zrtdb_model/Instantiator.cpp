@@ -193,20 +193,23 @@ bool Instantiator::mergeDbDefs(const app_strc_dat& appDef, StaticModelConfig& ou
     return true;
 }
 
-bool Instantiator::ensurePhysicalFiles(const std::vector<std::pair<std::string, db_strc_dat>>& loaded)
+bool Instantiator::ensurePhysicalFiles(const std::vector<std::pair<std::string, db_strc_dat>>& loaded, const std::string& appFingerprint)
 {
     long page = sysconf(_SC_PAGESIZE);
     if (page <= 0)
         page = 4096;
 
-    zrtdb::fingerprint::Fnv64 appHash;
-    appHash.addString("APP");
-    appHash.addString(appUpper_);
-    for (const auto& [dbUpper0, dbDef0] : loaded) {
-        appHash.addString(dbUpper0);
-        appHash.addString(dbDef0.layout_fingerprint);
+    std::string appFp = appFingerprint;
+    if (appFp.empty()) {
+        zrtdb::fingerprint::Fnv64 appHash;
+        appHash.addString("APP");
+        appHash.addString(appUpper_);
+        for (const auto& [dbUpper0, dbDef0] : loaded) {
+            appHash.addString(dbUpper0);
+            appHash.addString(dbDef0.layout_fingerprint);
+        }
+        appFp = appHash.hex();
     }
-    const std::string appFp = appHash.hex();
 
     for (const auto& [dbUpper, dbDef] : loaded) {
         auto dir = secsPath() / dbUpper;
@@ -486,7 +489,7 @@ bool Instantiator::instantiate(const std::string& appUpper)
     if (!appDef.layout_fingerprint.empty())
         clone.layout_fingerprint = appDef.layout_fingerprint;
 
-    if (!ensurePhysicalFiles(loaded))
+    if (!ensurePhysicalFiles(loaded, appDef.layout_fingerprint))
         return false;
 
     RuntimeAppConfig runtime {};

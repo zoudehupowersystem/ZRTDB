@@ -34,7 +34,7 @@ private:
     bool mergeDbDefs(const app_strc_dat& appDef, StaticModelConfig& outClone,
         std::vector<std::pair<std::string, db_strc_dat>>& loaded);
 
-    bool ensurePhysicalFiles(const std::vector<std::pair<std::string, db_strc_dat>>& loaded);
+    bool ensurePhysicalFiles(const std::vector<std::pair<std::string, db_strc_dat>>& loaded, const std::string& appFingerprint);
 
     void buildRuntime(const app_strc_dat& appDef, const StaticModelConfig& clone, RuntimeAppConfig& out);
 
