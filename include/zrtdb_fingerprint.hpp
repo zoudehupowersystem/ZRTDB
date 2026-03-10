@@ -29,8 +29,9 @@ public:
 
     void addString(std::string_view s)
     {
+        // Length-prefix each string to avoid stream ambiguity when payload contains separator bytes.
+        addPodLE<std::uint32_t>(static_cast<std::uint32_t>(s.size()));
         addBytes(s.data(), s.size());
-        addByte(0xff);
     }
 
     template <typename T>

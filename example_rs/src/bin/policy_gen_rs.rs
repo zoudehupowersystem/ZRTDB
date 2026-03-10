@@ -2,25 +2,11 @@ use std::thread;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use zrtdb_example_rs::*;
 
-const STR_BYTES: usize = 120;
-
 fn now_text() -> String {
     match SystemTime::now().duration_since(UNIX_EPOCH) {
         Ok(d) => format!("unix:{}", d.as_secs()),
         Err(_) => "unix:0".to_string(),
     }
-}
-
-unsafe fn write_info(controlptr: *mut zrtdb_control_controlptr_t, row: usize, text: &str) {
-    let info_ptr = std::ptr::addr_of_mut!((*controlptr).INFO_COMMANDS) as *mut [core::ffi::c_char; STR_BYTES];
-    let slot = info_ptr.add(row);
-    let mut buf = [0 as core::ffi::c_char; STR_BYTES];
-    let bytes = text.as_bytes();
-    let n = bytes.len().min(STR_BYTES - 1);
-    for i in 0..n {
-        buf[i] = bytes[i] as core::ffi::c_char;
-    }
-    std::ptr::write_unaligned(slot, buf);
 }
 
 fn main() {
@@ -36,35 +22,27 @@ fn main() {
         std::process::exit(2);
     }
 
-    let controlptr = ctx.CONTROL_CONTROLPTR;
-    let control = ctx.CONTROL_CONTROL;
     let mx = ZRTDB_CONTROL_MX_COMMANDS;
 
     println!("[GEN][pid={}] loops={} mx={} (run policy_exec_rs in another terminal)", pid, loops, mx);
 
     for seq in 1..=loops {
         let row = (seq - 1) % mx;
-        unsafe {
-            SnapshotReadLock_();
 
-            let status_base = std::ptr::addr_of_mut!((*controlptr).STATUS_COMMANDS) as *mut i32;
-            let val_base = std::ptr::addr_of_mut!((*controlptr).VAL_COMMANDS) as *mut f32;
-            let sig_base = std::ptr::addr_of_mut!((*controlptr).SIG_COMMANDS) as *mut i32;
-            let id_base = std::ptr::addr_of_mut!((*controlptr).ID_COMMANDS) as *mut i32;
-
-            std::ptr::write_unaligned(status_base.add(row), 0);
-            std::ptr::write_unaligned(val_base.add(row), std::f32::consts::PI);
-            std::ptr::write_unaligned(sig_base.add(row), seq as i32);
-            std::ptr::write_unaligned(id_base.add(row), 200);
-
-            write_info(controlptr, row, &(now_text() + " publish command"));
-
-            std::sync::atomic::fence(std::sync::atomic::Ordering::Release);
-            let lv_ptr = std::ptr::addr_of_mut!((*control).LV_COMMANDS);
-            std::ptr::write_unaligned(lv_ptr, (row + 1) as i32);
-
-            SnapshotReadUnlock_();
-        }
+        with_snapshot_write(|| {
+            write_command_row(
+                &ctx,
+                row,
+                &CommandRow {
+                    status: 0,
+                    val: std::f32::consts::PI,
+                    sig: seq as i32,
+                    id: 200,
+                    info: now_text() + " publish command",
+                },
+            );
+            publish_lv(&ctx, (row + 1) as i32);
+        });
 
         println!("[GEN][pid={}] publish seq={:04} lv={:04} row={:04}", pid, seq, row + 1, row + 1);
 
