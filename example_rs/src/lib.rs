@@ -28,11 +28,24 @@ pub struct CommandRow {
     pub info: String,
 }
 
+struct SnapshotWriteGuard;
+
+impl SnapshotWriteGuard {
+    fn new() -> Self {
+        unsafe { SnapshotReadLock_() };
+        Self
+    }
+}
+
+impl Drop for SnapshotWriteGuard {
+    fn drop(&mut self) {
+        unsafe { SnapshotReadUnlock_() };
+    }
+}
+
 pub fn with_snapshot_write<R>(f: impl FnOnce() -> R) -> R {
-    unsafe { SnapshotReadLock_() };
-    let out = f();
-    unsafe { SnapshotReadUnlock_() };
-    out
+    let _guard = SnapshotWriteGuard::new();
+    f()
 }
 
 pub fn write_command_row(ctx: &zrtdb_app_controler_ctx_t, row: usize, cmd: &CommandRow) {
@@ -78,7 +91,8 @@ pub fn publish_lv(ctx: &zrtdb_app_controler_ctx_t, lv_1based: i32) {
 }
 
 pub fn load_lv(ctx: &zrtdb_app_controler_ctx_t) -> i32 {
-    let lv = unsafe { std::ptr::read_unaligned(std::ptr::addr_of!((*ctx.CONTROL_CONTROL).LV_COMMANDS)) };
+    let lv =
+        unsafe { std::ptr::read_unaligned(std::ptr::addr_of!((*ctx.CONTROL_CONTROL).LV_COMMANDS)) };
     std::sync::atomic::fence(std::sync::atomic::Ordering::Acquire);
     lv
 }
@@ -93,7 +107,8 @@ pub fn mark_command_done(ctx: &zrtdb_app_controler_ctx_t, row: usize) {
 
 fn write_info(controlptr: *mut zrtdb_control_controlptr_t, row: usize, text: &str) {
     unsafe {
-        let info_ptr = std::ptr::addr_of_mut!((*controlptr).INFO_COMMANDS) as *mut [core::ffi::c_char; COMMAND_INFO_BYTES];
+        let info_ptr = std::ptr::addr_of_mut!((*controlptr).INFO_COMMANDS)
+            as *mut [core::ffi::c_char; COMMAND_INFO_BYTES];
         let slot = info_ptr.add(row);
         let mut buf = [0 as core::ffi::c_char; COMMAND_INFO_BYTES];
         let bytes = text.as_bytes();
@@ -107,7 +122,8 @@ fn write_info(controlptr: *mut zrtdb_control_controlptr_t, row: usize, text: &st
 
 fn read_info(controlptr: *mut zrtdb_control_controlptr_t, row: usize) -> String {
     unsafe {
-        let info_ptr = std::ptr::addr_of!((*controlptr).INFO_COMMANDS) as *const [core::ffi::c_char; COMMAND_INFO_BYTES];
+        let info_ptr = std::ptr::addr_of!((*controlptr).INFO_COMMANDS)
+            as *const [core::ffi::c_char; COMMAND_INFO_BYTES];
         let raw = std::ptr::read_unaligned(info_ptr.add(row));
         let bytes: Vec<u8> = raw
             .iter()
