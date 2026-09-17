@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # install layout (make install)
 # ---------------------------
 include(GNUInstallDirs)
+include(CTest)
 
 # 安装根：默认 /usr/local/ZRTDB
 set(ZRTDB_INSTALL_ROOT "${CMAKE_INSTALL_PREFIX}/ZRTDB"
@@ -37,7 +38,7 @@ install(CODE "file(MAKE_DIRECTORY \"${ZRTDB_INSTALL_ROOT}/header/.datdef\")")
 install(CODE "file(MAKE_DIRECTORY \"${ZRTDB_INSTALL_ROOT}/header/rust\")")
 
 add_subdirectory(zrtdb_lib)
+add_subdirectory(netmom)
 add_subdirectory(zrtdb_model)
 add_subdirectory(zrtdb_tool)
 add_subdirectory(zrtdb_watchdog)
-

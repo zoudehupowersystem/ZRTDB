@@ -8,6 +8,10 @@
     {
       "app": "SIMULATION",
       "dbs": ["MODEL", "SIMU"]
+    },
+    {
+      "app": "NETMOM",
+      "dbs": ["NETMOM"]
     }
   ]
 }

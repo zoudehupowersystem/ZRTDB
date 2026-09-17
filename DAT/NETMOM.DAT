@@ -1,0 +1,144 @@
+/*
+ * NETMOM.DAT
+ * ZRTDB-backed network object model for power-system topology and BPA import.
+ * IDs and *_IDX fields are 1-based record row references.
+ */
+/DBNAME:NETMOM
+
+/RECORD:SYS     DIM:4       COMMENT:System case metadata\n/RECORD:CO      DIM:32      COMMENT:Company or model owner\n/RECORD:DV      DIM:128     COMMENT:Division
+/RECORD:ST      DIM:10000   COMMENT:Substation or station container
+/RECORD:KV      DIM:20000   COMMENT:Voltage level
+/RECORD:ND      DIM:50000   COMMENT:Physical electrical node
+/RECORD:CBTYP   DIM:32      COMMENT:Switching device type
+/RECORD:CB      DIM:100000  COMMENT:Switching device breaker or disconnector
+/RECORD:ZBR     DIM:50000   COMMENT:Explicit zero-impedance branch
+/RECORD:LN      DIM:100000  COMMENT:AC line or equivalent branch
+/RECORD:XF      DIM:30000   COMMENT:Two-terminal transformer or phase shifter
+/RECORD:LD      DIM:50000   COMMENT:Demand load
+/RECORD:UN      DIM:20000   COMMENT:Generating unit
+/RECORD:CP      DIM:20000   COMMENT:Fixed shunt capacitor reactor or conductance
+/RECORD:TOPO    DIM:50000   COMMENT:Node to calculation-bus and island mapping
+/RECORD:CALCBUS DIM:50000   COMMENT:Calculated bus after zero-impedance merging
+/RECORD:ISLAND  DIM:5000    COMMENT:Electrical island summary
+
+/PARTITION:HIER\n/FIELD:ID_SYS             TYPE:int       COMMENT:System metadata row\n/FIELD:NAME_SYS           TYPE:string64  COMMENT:Case ID or model name\n/FIELD:MVA_BASE_SYS       TYPE:double    COMMENT:System base MVA\n\n/FIELD:ID_CO             TYPE:int       COMMENT:Company ID
+/FIELD:NAME_CO           TYPE:string32  COMMENT:Company name
+
+/FIELD:ID_DV             TYPE:int       COMMENT:Division ID
+/FIELD:NAME_DV           TYPE:string32  COMMENT:Division name
+/FIELD:CO_IDX_DV         TYPE:int       COMMENT:Parent CO row
+
+/FIELD:ID_ST             TYPE:int       COMMENT:Station ID
+/FIELD:NAME_ST           TYPE:string64  COMMENT:Station name
+/FIELD:DV_IDX_ST         TYPE:int       COMMENT:Parent DV row
+
+/FIELD:ID_KV             TYPE:int       COMMENT:Voltage-level ID
+/FIELD:NAME_KV           TYPE:string32  COMMENT:Voltage-level name
+/FIELD:ST_IDX_KV         TYPE:int       COMMENT:Parent ST row
+/FIELD:BASEKV_KV         TYPE:double    COMMENT:Nominal voltage in kV
+
+/FIELD:ID_CBTYP          TYPE:int       COMMENT:Switch type ID
+/FIELD:NAME_CBTYP        TYPE:string32  COMMENT:BREAKER or DISCONNECTOR
+/FIELD:KIND_CBTYP        TYPE:int       COMMENT:1 breaker 2 disconnector
+
+/PARTITION:TOPOLOGY
+/FIELD:ID_ND             TYPE:int       COMMENT:Physical node ID
+/FIELD:NAME_ND           TYPE:string64  COMMENT:Physical node name
+/FIELD:KV_IDX_ND         TYPE:int       COMMENT:Voltage-level row
+/FIELD:BASEKV_ND         TYPE:double    COMMENT:Nominal kV
+/FIELD:ZONE_ND           TYPE:string8   COMMENT:BPA zone or external zone code
+/FIELD:BUS_TYPE_ND       TYPE:int       COMMENT:1 PQ 2 PV 3 slack
+/FIELD:IN_SERVICE_ND     TYPE:int       COMMENT:1 in service
+/FIELD:SOURCE_ND         TYPE:string16  COMMENT:Data source such as BPA
+
+/FIELD:ID_CB             TYPE:int       COMMENT:Switching-device ID
+/FIELD:NAME_CB           TYPE:string64  COMMENT:Switching-device name
+/FIELD:CBTYP_IDX_CB      TYPE:int       COMMENT:CBTYP row 1 breaker 2 disconnector by default
+/FIELD:ND1_IDX_CB        TYPE:int       COMMENT:Terminal physical node 1
+/FIELD:ND2_IDX_CB        TYPE:int       COMMENT:Terminal physical node 2
+/FIELD:CLOSED_CB         TYPE:int       COMMENT:1 closed 0 open
+/FIELD:NORMAL_CLOSED_CB  TYPE:int       COMMENT:Normal switching state
+/FIELD:IN_SERVICE_CB     TYPE:int       COMMENT:1 device available
+
+/FIELD:ID_ZBR            TYPE:int       COMMENT:Zero-impedance branch ID
+/FIELD:NAME_ZBR          TYPE:string64  COMMENT:Zero-impedance branch name
+/FIELD:ND1_IDX_ZBR       TYPE:int       COMMENT:Terminal node 1
+/FIELD:ND2_IDX_ZBR       TYPE:int       COMMENT:Terminal node 2
+/FIELD:SOURCE_ZBR        TYPE:string16  COMMENT:Source record type
+/FIELD:CLOSED_ZBR        TYPE:int       COMMENT:1 electrically connected
+/FIELD:IN_SERVICE_ZBR    TYPE:int       COMMENT:1 branch available
+
+/FIELD:ID_LN             TYPE:int       COMMENT:Line ID
+/FIELD:NAME_LN           TYPE:string64  COMMENT:Line name
+/FIELD:SOURCE_LN         TYPE:string8   COMMENT:BPA L or E
+/FIELD:ND1_IDX_LN        TYPE:int       COMMENT:Terminal node 1
+/FIELD:ND2_IDX_LN        TYPE:int       COMMENT:Terminal node 2
+/FIELD:CIRCUIT_LN        TYPE:string8   COMMENT:Circuit ID
+/FIELD:R_PU_LN           TYPE:double    COMMENT:Series R pu
+/FIELD:X_PU_LN           TYPE:double    COMMENT:Series X pu
+/FIELD:G1_PU_LN          TYPE:double    COMMENT:End-1 shunt G pu
+/FIELD:B1_PU_LN          TYPE:double    COMMENT:End-1 shunt B pu
+/FIELD:G2_PU_LN          TYPE:double    COMMENT:End-2 shunt G pu
+/FIELD:B2_PU_LN          TYPE:double    COMMENT:End-2 shunt B pu
+/FIELD:RATING_LN         TYPE:double    COMMENT:BPA line rating
+/FIELD:IN_SERVICE_LN     TYPE:int       COMMENT:1 in service
+
+/FIELD:ID_XF             TYPE:int       COMMENT:Transformer ID
+/FIELD:NAME_XF           TYPE:string64  COMMENT:Transformer name
+/FIELD:ND1_IDX_XF        TYPE:int       COMMENT:Terminal node 1
+/FIELD:ND2_IDX_XF        TYPE:int       COMMENT:Terminal node 2
+/FIELD:CIRCUIT_XF        TYPE:string8   COMMENT:Circuit ID
+/FIELD:R_PU_XF           TYPE:double    COMMENT:Series R pu
+/FIELD:X_PU_XF           TYPE:double    COMMENT:Series X pu
+/FIELD:G_PU_XF           TYPE:double    COMMENT:Core-loss G pu
+/FIELD:B_PU_XF           TYPE:double    COMMENT:Magnetizing B pu
+/FIELD:TAP1_XF           TYPE:double    COMMENT:Fixed tap 1 kV or phase angle field
+/FIELD:TAP2_XF           TYPE:double    COMMENT:Fixed tap 2 kV
+/FIELD:ANGLE_DEG_XF      TYPE:double    COMMENT:Phase-shifter angle degrees
+/FIELD:RATING_MVA_XF     TYPE:double    COMMENT:Nominal rating
+/FIELD:PHASE_SHIFTER_XF  TYPE:int       COMMENT:1 phase shifter
+/FIELD:IN_SERVICE_XF     TYPE:int       COMMENT:1 in service
+
+/PARTITION:POWER
+/FIELD:ID_LD             TYPE:int       COMMENT:Load ID
+/FIELD:NAME_LD           TYPE:string64  COMMENT:Load name
+/FIELD:ND_IDX_LD         TYPE:int       COMMENT:Connected physical node
+/FIELD:P_MW_LD           TYPE:double    COMMENT:MW load
+/FIELD:Q_MVAR_LD         TYPE:double    COMMENT:MVAR load
+/FIELD:IN_SERVICE_LD     TYPE:int       COMMENT:1 in service
+
+/FIELD:ID_UN             TYPE:int       COMMENT:Generator ID
+/FIELD:NAME_UN           TYPE:string64  COMMENT:Generator name
+/FIELD:ND_IDX_UN         TYPE:int       COMMENT:Connected physical node
+/FIELD:P_MW_UN           TYPE:double    COMMENT:MW generation
+/FIELD:Q_MVAR_UN         TYPE:double    COMMENT:MVAR generation schedule or initial value
+/FIELD:QMIN_MVAR_UN      TYPE:double    COMMENT:Minimum MVAR
+/FIELD:QMAX_MVAR_UN      TYPE:double    COMMENT:Maximum MVAR
+/FIELD:VSET_PU_UN        TYPE:double    COMMENT:Voltage setpoint pu
+/FIELD:BUS_TYPE_UN       TYPE:int       COMMENT:2 PV 3 slack where applicable
+/FIELD:IN_SERVICE_UN     TYPE:int       COMMENT:1 in service
+
+/FIELD:ID_CP             TYPE:int       COMMENT:Shunt ID
+/FIELD:NAME_CP           TYPE:string64  COMMENT:Shunt name
+/FIELD:ND_IDX_CP         TYPE:int       COMMENT:Connected node
+/FIELD:G_PU_CP           TYPE:double    COMMENT:Fixed shunt conductance pu
+/FIELD:B_PU_CP           TYPE:double    COMMENT:Fixed shunt susceptance pu
+/FIELD:IN_SERVICE_CP     TYPE:int       COMMENT:1 in service
+
+/PARTITION:RESULT
+/FIELD:ND_IDX_TOPO       TYPE:int       COMMENT:Physical node row
+/FIELD:CALCBUS_ID_TOPO   TYPE:int       COMMENT:Calculated bus ID
+/FIELD:ISLAND_ID_TOPO    TYPE:int       COMMENT:Electrical island ID
+
+/FIELD:ID_CALCBUS        TYPE:int       COMMENT:Calculation bus ID
+/FIELD:REP_ND_IDX_CALCBUS TYPE:int      COMMENT:Representative physical node
+/FIELD:ISLAND_ID_CALCBUS TYPE:int       COMMENT:Electrical island ID
+/FIELD:BASEKV_CALCBUS    TYPE:double    COMMENT:Nominal kV
+/FIELD:NODE_COUNT_CALCBUS TYPE:int      COMMENT:Number of merged physical nodes
+
+/FIELD:ID_ISLAND         TYPE:int       COMMENT:Island ID
+/FIELD:CALCBUS_COUNT_ISLAND TYPE:int    COMMENT:Number of calculation buses
+/FIELD:NODE_COUNT_ISLAND TYPE:int       COMMENT:Number of physical nodes
+/FIELD:GEN_COUNT_ISLAND  TYPE:int       COMMENT:Number of in-service generators
+/FIELD:LOAD_COUNT_ISLAND TYPE:int       COMMENT:Number of in-service loads
+/FIELD:ENERGIZED_ISLAND  TYPE:int       COMMENT:1 if island contains an in-service generator
