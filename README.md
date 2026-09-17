@@ -1,5 +1,15 @@
 # 零拷贝实时数据总线 ZRTDB
 
+<!-- official-project-source -->
+> **官方项目 / Official Project**  
+> **项目 / Project:** ZRTDB — Zero-copy Real-Time Data Bus  
+> **作者 / Author:** [Dehu Zou（邹德虎）](https://zoudehupowersystem.github.io/)  
+> **官方仓库 / Official Repository:** https://github.com/zoudehupowersystem/ZRTDB  
+> **个人主页 / Homepage:** https://zoudehupowersystem.github.io/
+>
+> 本仓库是 **ZRTDB 的官方发布源（canonical source）**。如需引用、转载、镜像或二次开发，请保留原项目名称、作者信息、官方仓库链接以及适用的开源许可证声明。
+
+
 ZRTDB（Zero-copy Real-Time Data Bus）是面向实时控制、SCADA、工业边缘计算等需求，以共享内存为载体、以静态建模为契约的实时数据平面。它的核心取舍是：**把结构复杂度前移到建模/实例化阶段**，运行期只做“固定偏移 + 直接读写”，从而获得可预测的时延与可运维的现场定位能力。ZRTDB不是Redis/SQLite 的替代品，而是同机实时数据的可运维基础设施。
 
 与传统数据库或消息队列不同，ZRTDB重点确保强确定性与可预测时延。ZRTDB 的三个关键特性是：

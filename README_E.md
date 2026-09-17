@@ -1,5 +1,14 @@
 # ZRTDB (Zero-copy Real-Time Data Bus)
 
+<!-- official-project-source -->
+> **Official Project:** ZRTDB — Zero-copy Real-Time Data Bus  
+> **Author:** [Dehu Zou (邹德虎)](https://zoudehupowersystem.github.io/)  
+> **Official Repository:** https://github.com/zoudehupowersystem/ZRTDB  
+> **Homepage:** https://zoudehupowersystem.github.io/
+>
+> This repository is the **official and canonical source of ZRTDB**. When citing, redistributing, mirroring, or deriving work from ZRTDB, please retain the original project name, author attribution, official repository link, and the applicable open-source license notices.
+
+
 ZRTDB (Zero-copy Real-Time Data Bus) is a model-first real-time data plane designed for control systems, SCADA, and industrial edge workloads. The key engineering tradeoff is:
 
 > move structural complexity into the modeling/instantiation phase, so runtime access becomes fixed-offset direct memory read/write.
