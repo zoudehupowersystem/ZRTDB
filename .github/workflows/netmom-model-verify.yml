@@ -1,0 +1,33 @@
+name: Verify NETMOM model compilation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/netmom-model-verify.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-model:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build zrtdb_model
+        run: |
+          cmake -S . -B build-model -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-model --target zrtdb_model -j2
+      - name: Compile and instantiate all DAT models including NETMOM
+        env:
+          MMDB_STATIC_ROOT: ${{ github.workspace }}
+          MMDB_RUNTIME_ROOT: ${{ runner.temp }}/zrtdb-runtime
+          ZRTDB_WATCHDOG_DISABLE: '1'
+        run: |
+          mkdir -p "$MMDB_RUNTIME_ROOT"
+          ./build-model/zrtdb_model/zrtdb_model
+          test -f header/inc/NETMOM.h
+          test -f header/.datdef/NETMOM.DBDEF
+          test -f "$MMDB_RUNTIME_ROOT/NETMOM/meta/apps/NETMOM.sec"
+          find "$MMDB_RUNTIME_ROOT/NETMOM/zrtdb_data/NETMOM" -name '*.sec' -type f | grep -q .
