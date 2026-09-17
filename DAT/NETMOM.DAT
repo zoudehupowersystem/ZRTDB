@@ -5,7 +5,9 @@
  */
 /DBNAME:NETMOM
 
-/RECORD:SYS     DIM:4       COMMENT:System case metadata\n/RECORD:CO      DIM:32      COMMENT:Company or model owner\n/RECORD:DV      DIM:128     COMMENT:Division
+/RECORD:SYS     DIM:4       COMMENT:System case metadata
+/RECORD:CO      DIM:32      COMMENT:Company or model owner
+/RECORD:DV      DIM:128     COMMENT:Division
 /RECORD:ST      DIM:10000   COMMENT:Substation or station container
 /RECORD:KV      DIM:20000   COMMENT:Voltage level
 /RECORD:ND      DIM:50000   COMMENT:Physical electrical node
@@ -21,7 +23,12 @@
 /RECORD:CALCBUS DIM:50000   COMMENT:Calculated bus after zero-impedance merging
 /RECORD:ISLAND  DIM:5000    COMMENT:Electrical island summary
 
-/PARTITION:HIER\n/FIELD:ID_SYS             TYPE:int       COMMENT:System metadata row\n/FIELD:NAME_SYS           TYPE:string64  COMMENT:Case ID or model name\n/FIELD:MVA_BASE_SYS       TYPE:double    COMMENT:System base MVA\n\n/FIELD:ID_CO             TYPE:int       COMMENT:Company ID
+/PARTITION:HIER
+/FIELD:ID_SYS             TYPE:int       COMMENT:System metadata row
+/FIELD:NAME_SYS           TYPE:string64  COMMENT:Case ID or model name
+/FIELD:MVA_BASE_SYS       TYPE:double    COMMENT:System base MVA
+
+/FIELD:ID_CO             TYPE:int       COMMENT:Company ID
 /FIELD:NAME_CO           TYPE:string32  COMMENT:Company name
 
 /FIELD:ID_DV             TYPE:int       COMMENT:Division ID
