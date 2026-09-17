@@ -8,7 +8,8 @@ object semantics needed by dispatch/EMS applications.
 
 The initial model contains:
 
-- system metadata: `SYS` (case ID and base MVA);\n- organization hierarchy: `CO -> DV -> ST -> KV`;
+- system metadata: `SYS` (case ID and base MVA);
+- organization hierarchy: `CO -> DV -> ST -> KV`;
 - physical electrical nodes: `ND`;
 - switching devices: `CBTYP -> CB`;
 - explicit zero-impedance connections: `ZBR`;
